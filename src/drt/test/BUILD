@@ -311,3 +311,13 @@ regression_test(
     tags = ["manual"],
     visibility = ["//visibility:public"],
 )
+
+cc_test(
+    name = "WatermarkCostTest",
+    srcs = ["WatermarkCostTest.cpp"],
+    deps = [
+        "//src/drt:base_types",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)

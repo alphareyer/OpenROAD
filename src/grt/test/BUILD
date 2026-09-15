@@ -109,6 +109,7 @@ TESTS = [
     "repair_antennas_cugr",
     "repair_antennas_from_odb",
     "repair_antennas_from_odb_cugr",
+    "repair_antennas_odb_roundtrip",
     "repair_antennas_reroute",
     "repair_antennas_best_state",
     "report_wire_length1",
@@ -232,6 +233,30 @@ cc_test(
         "//src/odb/src/db",
         "//src/stt",
         "//src/tst:db_fixture",
+        "//src/utl",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "TestGuideRestore",
+    size = "small",
+    srcs = ["cpp/TestGuideRestore.cpp"],
+    data = [
+        "remove_buffers1.def",
+        "//test:nangate45_data",
+    ],
+    deps = [
+        "//src/ant",
+        "//src/dbSta",
+        "//src/dpl",
+        "//src/grt",
+        "//src/grt:groute",
+        "//src/odb/src/db",
+        "//src/odb/src/defin",
+        "//src/stt",
+        "//src/tst",
         "//src/utl",
         "@googletest//:gtest",
         "@googletest//:gtest_main",
