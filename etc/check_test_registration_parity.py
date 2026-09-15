@@ -88,10 +88,6 @@ KNOWN_CMAKE_ONLY = {
     # GPU tests are guarded in CMake behind a CUDA-enabled build.  They are
     # upstream's, and upstream has not wired a GPU configuration into bazel.
     # Not ours to wire, and not part of the shipped CPU image.
-    "gpl:region01_gpu": "upstream CUDA-only; no GPU configuration exists in bazel",
-    "gpl:region01_gpu_asym": "upstream CUDA-only; no GPU configuration exists in bazel",
-    "gpl:fft_gpu_test": "upstream CUDA-only; no GPU configuration exists in bazel",
-    "gpl:wl_gpu_test": "upstream CUDA-only; no GPU configuration exists in bazel",
 }
 
 
@@ -145,6 +141,54 @@ def cmake_integration_tests(path):
     return tests
 
 
+def _cmake_list_var(text, name):
+    """The literal items of `set(<name> a b c)`, or [] if it is not set here."""
+    m = re.search(r"\bset\s*\(\s*%s\b" % re.escape(name), text)
+    if not m:
+        return []
+    args = _balanced_call_args(text, m.end() - len(name) - 1)
+    toks = args.replace('"', " ").split()
+    return [t for t in toks[1:] if not t.startswith("$")]
+
+
+def _foreach_items(text, rest):
+    """The loop's literal items, from either `foreach` form.
+
+    `foreach(v a b c)` and `foreach(v ITEMS a b c)` name the items directly.
+    `foreach(v IN LISTS WEB_TESTS)` names a list VARIABLE, and the items are
+    whatever `set(WEB_TESTS ...)` holds.
+
+    Reading the second form literally is what broke the 2026-09-15 daily
+    merge. Upstream's `gui: wire up the heatmap selection filter` (9f8eaeeb9e)
+    added
+
+        set(WEB_TESTS TestTileGenerator TestRequestHandler ...)
+        foreach(test IN LISTS WEB_TESTS)
+          add_executable(${test} ${test}.cpp ...)
+
+    and this function returned the string `WEB_TESTS` as if it were a test.
+    No bazel target can ever match a name that is not a test, so the parity
+    check reported `web:WEB_TESTS` UNEXPECTED, the post-merge check went red,
+    the merge was not pushed, and the release and the public page stopped --
+    on a phantom. The thirteen real names it stood for are all wired in
+    `src/web/test/BUILD`; the tree was correct and the reader was not.
+
+    An unresolvable variable yields no items rather than a guessed name: a
+    missed test is a quiet gap in coverage, while an invented one is a red
+    that no edit to the tree can clear.
+    """
+    if "LISTS" in rest:
+        out = []
+        for var in rest[rest.index("LISTS") + 1:]:
+            if var.startswith("$") or var in ("IN", "LISTS", "ITEMS", "RANGE"):
+                continue
+            out.extend(_cmake_list_var(text, var))
+        return out
+    return [t for t in rest
+            if not t.startswith("$")
+            and t not in ("IN", "LISTS", "ITEMS", "RANGE")]
+
+
 def cmake_cpp_tests(mod_dir):
     """-> {target: set(source basenames)}"""
     found = {}
@@ -165,9 +209,7 @@ def cmake_cpp_tests(mod_dir):
                 body)
             if not ae:
                 continue
-            for t in toks[1:]:
-                if t.startswith("$") or t in ("IN", "LISTS", "ITEMS", "RANGE"):
-                    continue
+            for t in _foreach_items(text, toks[1:]):
                 found[t] = {
                     os.path.basename(s.replace("${%s}" % loopvar, t))
                     for s in ae.group("srcs").split()
