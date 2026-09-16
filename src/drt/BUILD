@@ -208,6 +208,7 @@ cc_library(
         "src/global.cpp",
         "src/io/GuideProcessor.cpp",
         "src/io/GuideProcessor.h",
+        "src/io/decodePoint.h",
         "src/io/io.cpp",
         "src/io/io_parser_helper.cpp",
         "src/io/io_pin.cpp",
