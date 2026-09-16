@@ -192,6 +192,31 @@ test_suite(
     tests = [":ta_unittest"],
 )
 
+test_suite(
+    name = "wire_decoder_test",
+    tests = [":wire_decoder_unittest"],
+)
+
+cc_test(
+    name = "wire_decoder_unittest",
+    srcs = [
+        "wireDecoderTest.cpp",
+    ],
+    features = ["-layering_check"],  # TODO: acceses private headers
+    includes = [
+        "../src",
+    ],
+    deps = [
+        "//src/drt",  # build_cleaner: keep for private headers
+        "//src/drt:base_types",
+        "//src/drt:db_hdrs",
+        "//src/odb/src/db",
+        "//src/utl",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
 cc_test(
     name = "ta_unittest",
     srcs = [

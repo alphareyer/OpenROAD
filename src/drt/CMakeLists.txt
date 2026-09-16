@@ -154,7 +154,7 @@ if(ENABLE_TESTS)
   enable_testing()
 
   foreach(test_name gcTest taTest multiPinBTermTest routingViaConnectivityTest
-                    frMarkerCopyTest)
+                    frMarkerCopyTest wireDecoderTest)
     add_executable(${test_name}
       ${FLEXROUTE_HOME}/test/${test_name}.cpp
       ${FLEXROUTE_HOME}/test/fixture.cpp
