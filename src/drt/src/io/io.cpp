@@ -3,6 +3,8 @@
 
 #include "io/io.h"
 
+#include "io/decodePoint.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -826,9 +828,14 @@ void io::Parser::updateNetRouting(frNet* netIn, odb::dbNet* net)
         }
         pathId = decoder.next();
 
-        if (pathId == odb::dbWireDecoder::POINT && hasEndPoint) {
-          frCoord x, y;
-          decoder.getPoint(x, y);
+        // R-0915-74(c) — POINT_EXT IS A POINT. This look-ahead used to ask
+        // `pathId == POINT` only, so a turn whose next point carried a wire
+        // extension was not seen: the path was not ended at the direction
+        // change, and the next pass of this same loop overwrote the segment's
+        // END with the point AFTER the turn, producing a diagonal frPathSeg out
+        // of two orthogonal wires. See `decodePoint.h` for the measurement.
+        frCoord x, y;
+        if (hasEndPoint && decoderReadPoint(decoder, pathId, x, y)) {
           bool curr_conn_vertical = beginX == endX;
           bool next_conn_vertical = endX == x;
           orthogonal_conn = curr_conn_vertical != next_conn_vertical;
