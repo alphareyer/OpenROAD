@@ -9,7 +9,8 @@ or_integration_tests(
     coupling_fill_off
     density_failsafe
     density_geometry_mismatch
+  PASSFAIL_TESTS
+    density_fill_obstruction
 )
 
 add_subdirectory(cpp)
-

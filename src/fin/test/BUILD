@@ -18,7 +18,11 @@ COMPULSORY_TESTS = [
     "density_geometry_mismatch",
 ]
 
-ALL_TESTS = COMPULSORY_TESTS
+PASSFAIL_TESTS = [
+    "density_fill_obstruction",
+]
+
+ALL_TESTS = COMPULSORY_TESTS + PASSFAIL_TESTS
 
 filegroup(
     name = "regression_resources",
@@ -96,6 +100,8 @@ filegroup(
 [
     regression_test(
         name = test_name,
+        check_log = False if test_name in PASSFAIL_TESTS else True,
+        check_passfail = True if test_name in PASSFAIL_TESTS else False,
         data = [":" + test_name + "_resources"],
         tags = [] if test_name in COMPULSORY_TESTS else ["manual"],
         visibility = ["//visibility:public"],
