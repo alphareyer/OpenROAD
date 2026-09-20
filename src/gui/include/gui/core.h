@@ -857,6 +857,11 @@ class Dialogs
   // Returns the inserted instance, or nullptr if the user cancelled or the
   // insertion failed (in which case the dialog reports the error).
   virtual odb::dbInst* insertBuffer(odb::dbNet* net, sta::dbSta* sta) = 0;
+
+  // Open the setup dialog for `source`, raising the one already open for it
+  // if there is one.  Reached from the heat map's display control, which is
+  // why the renderer needs no Qt of its own.
+  virtual void showHeatMapSetup(HeatMapDataSource* source) = 0;
 };
 
 // Opens the gui and runs a script in it.  Unlike a GuiBackend this is not
@@ -912,6 +917,13 @@ class GuiBackend
   // sees them until a viewer implements its own.
   virtual void setSelected(const Selected& /* selection */) {}
   virtual void addSelected(const Selected& /* selection */) {}
+
+  // Select a whole set at once.  find_in_cts asks a backend that has a clock
+  // tree view to reveal the objects there too.
+  virtual void addSelected(const SelectionSet& /* selection */,
+                           bool /* find_in_cts */)
+  {
+  }
   virtual void removeSelectedByType(const std::string& /* type */) {}
   virtual const SelectionSet& selection()
   {
@@ -1066,6 +1078,12 @@ class GuiBackend
     return nullptr;
   }
 
+  // Show or hide a heat map in the backend's own controls.  Gui keeps the
+  // set and owns the renderer either way, so a backend with no such controls
+  // simply has nothing to add.
+  virtual void registerHeatMap(HeatMapDataSource* /* heatmap */) {}
+  virtual void unregisterHeatMap(HeatMapDataSource* /* heatmap */) {}
+
   // Drive the timing views.  A backend with no timing widgets ignores both.
   virtual void timingCone(Term /* term */, bool /* fanin */, bool /* fanout */)
   {
@@ -1112,10 +1130,6 @@ class GuiBackend
   {
   }
 };
-
-// The web viewer installs itself through Gui::setHeadlessViewer; it is a
-// GuiBackend that reports no window.
-using HeadlessViewer = GuiBackend;
 
 // This is the API for the rest of the program to interact with the
 // GUI.  This class is accessed by the GUI implementation to interact
@@ -1425,8 +1439,8 @@ class Gui
 
   // Install / inspect a backend for a viewer with no Qt window (the web
   // viewer).  A window backend takes precedence over it.
-  void setHeadlessViewer(HeadlessViewer* viewer);
-  HeadlessViewer* getHeadlessViewer() const { return headless_viewer_; }
+  void setHeadlessViewer(GuiBackend* viewer);
+  GuiBackend* getHeadlessViewer() const { return headless_viewer_; }
 
   // Factory for gui::Chart instances when the Qt GUI is not running.
   // The web viewer installs a factory that returns WebChart*.  When the
@@ -1516,7 +1530,7 @@ class Gui
   // Installed by the Qt gui's MainWindow while it is open.
   GuiBackend* backend_ = nullptr;
   // Used when the Qt gui is not active.  Installed by the web viewer.
-  HeadlessViewer* headless_viewer_ = nullptr;
+  GuiBackend* headless_viewer_ = nullptr;
   ChartFactory chart_factory_;
   Dialogs* dialogs_ = nullptr;
   GuiLauncher* launcher_ = nullptr;

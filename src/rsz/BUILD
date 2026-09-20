@@ -207,7 +207,7 @@ cc_library(
         ":rsz_private_hdrs",
         "//:ord",
         "//src/dbSta:dbNetwork",
-        "//src/gui",
+        "//src/gui:core",
         "//src/odb/src/db",
         "//src/sta:opensta_lib",
         "//src/utl",

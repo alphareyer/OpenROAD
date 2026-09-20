@@ -26,7 +26,7 @@ target_include_directories(fin
 target_link_libraries(fin
   PRIVATE
     odb
-    gui
+    gui_core
     Boost::boost
 )
 

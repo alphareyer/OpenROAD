@@ -71,7 +71,6 @@ target_include_directories(grt
 target_link_libraries(grt
     grt_lib
     dbSta
-    gui
     gui_core
     stt
     rsz
@@ -100,7 +99,6 @@ if (Python3_FOUND AND BUILD_PYTHON)
       ant_lib
       dpl_lib
       dbSta
-      gui
       gui_core
       stt
       OpenSTA
