@@ -3823,11 +3823,18 @@ void io::Writer::updateDbConn(odb::dbBlock* block,
                               bool snapshot)
 {
   odb::dbWireEncoder _wire_encoder;
+  nets_wire_written_ = 0;
+  nets_wire_held_fixed_ = 0;
   for (auto net : block->getNets()) {
     if (connFigs_.find(net->getName()) != connFigs_.end()) {
       if (getDesign()->getTopBlock()->findNet(net->getName())->isFixed()) {
+        // The net's dbWire is left exactly as it arrived -- not re-encoded,
+        // not re-ordered, not touched. This is what makes a scoped route
+        // byte-preserving for the nets outside the scope.
+        nets_wire_held_fixed_++;
         continue;
       }
+      nets_wire_written_++;
       odb::dbWire* wire = net->getWire();
       if (wire == nullptr) {
         wire = odb::dbWire::create(net);
@@ -4153,6 +4160,20 @@ void io::Writer::updateDb(odb::dbDatabase* db,
   updateDbAccessPoints(block, db_tech);
   if (!pin_access_only) {
     for (auto net : block->getNets()) {
+      // vibeic fork: ask the DESIGN, not just the encoding. This loop and
+      // updateDbConn() below have to agree about which nets are fixed, because
+      // between them they destroy and then re-create every wire. They agreed
+      // as long as "fixed" meant one thing -- a dbWire whose type decodes to
+      // FIXED -- and both tested for that separately. A net held fixed for the
+      // duration of ONE route (detailed_route -nets) is not visible in the
+      // encoding, so this loop would delete its wire and updateDbConn would
+      // then decline to write it back: the net would come out of a
+      // "byte-preserving" route with no wire at all.
+      const frNet* fr_net
+          = getDesign()->getTopBlock()->findNet(net->getName());
+      if (fr_net != nullptr && fr_net->isFixed()) {
+        continue;
+      }
       if (net->getWire()) {
         odb::dbWireDecoder decoder;
         decoder.begin(net->getWire());
@@ -4367,6 +4388,14 @@ void io::TopLayerBTermHandler::processBTermsAboveTopLayer(bool has_routing)
     int top_layer_idx = top_tech_layer->getRoutingLevel();
     for (auto bterm : block->getBTerms()) {
       if (bterm->getNet()->isSpecial()) {
+        continue;
+      }
+      // vibeic fork: a fixed net's wire is not ours to add vias to either.
+      // stackVias() appends to the net's dbWire, which is the one thing a
+      // scoped route promises not to do to a net it was not given.
+      const frNet* fr_net
+          = design_->getTopBlock()->findNet(bterm->getNet()->getName());
+      if (fr_net != nullptr && fr_net->isFixed()) {
         continue;
       }
       int bterm_bottom_layer_idx = std::numeric_limits<int>::max();

@@ -303,6 +303,16 @@ proc grt::antenna_violating_nets { } {
   return [split $names "\n"]
 }
 
+# The nets the last repair_antennas pass left for the detailed router to put
+# back, as a Tcl list. Same newline-joined encoding and the same reason.
+proc grt::repaired_net_names { } {
+  set names [grt::repaired_nets]
+  if { $names eq "" } {
+    return {}
+  }
+  return [split $names "\n"]
+}
+
 proc repair_antennas { args } {
   sta::parse_key_args "repair_antennas" args \
     keys {-iterations -ratio_margin} flags {-jumper_only -diode_only -allow_congestion -reroute}
@@ -432,7 +442,28 @@ proc repair_antennas { args } {
         }
         grt::repair_antennas $diode_mterm 1 $ratio_margin $jumper_only \
           $diode_only
-        detailed_route -verbose 0
+        # SCOPED reroute (vibeic fork). The repair pass destroys the detailed
+        # wire of the nets it dirtied and of nothing else, so those nets -- and
+        # only those -- are what a detailed route has to put back. A
+        # whole-design `detailed_route` here re-lays all 655 nets of a design
+        # whose single violation needed one diode: measured 92 nets losing
+        # their wire entirely, 55 shrinking, and DRT-0206 on the way out.
+        # `-nets` holds every other net fixed, so their dbWire is not even
+        # re-encoded.
+        set scope [grt::repaired_net_names]
+        if { [llength $scope] == 0 } {
+          # Nothing was dirtied, so there is nothing to re-realize. Routing the
+          # whole design here would be pure damage, so it is not done, and the
+          # loop is told why rather than being left to look converged.
+          utl::warn GRT 324 "repair_antennas -reroute: the repair pass left no\
+            net for the detailed router to re-realize; skipping the reroute\
+            for this pass."
+        } else {
+          utl::info GRT 325 "repair_antennas -reroute: re-routing [llength\
+            $scope] net(s) the repair pass left unwired; every other net is\
+            held fixed."
+          detailed_route -verbose 0 -nets $scope
+        }
       }
       set final_count [lindex $states end]
       set final_nets $nets

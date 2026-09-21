@@ -594,6 +594,15 @@ void FlexTAWorker::initIroutes()
     result.clear();
     regionQuery->queryGuide(getExtBox(), lNum, result);
     for (auto& [boostb, guide] : result) {
+      // vibeic fork: a fixed net's routing is already committed and already
+      // counted -- initFixedObjs() above reads its real metal out of the
+      // design region query. Assigning its guide to a track as well would
+      // model the same net twice and let track assignment move a wire nothing
+      // is allowed to re-lay.
+      frNet* guide_net = guide->getNet();
+      if (guide_net != nullptr && guide_net->isFixed()) {
+        continue;
+      }
       initIroute(guide);
     }
   }

@@ -53,7 +53,21 @@ class frNet : public frBlockObject
   bool isFake() const { return isFakeNet_; }
   frNonDefaultRule* getNondefaultRule() const { return ndr_; }
   bool hasInitialRouting() const { return hasInitialRouting_; }
-  bool isFixed() const { return isFixed_; }
+  // "This net's routing is not mine to change": never ripped up, never routed,
+  // and io::Writer::updateDbConn leaves its dbWire alone. Two independent
+  // reasons produce it and they must stay tellable apart -- one is a property
+  // of the database, the other is an argument to one command.
+  bool isFixed() const { return isFixed_ || scope_held_; }
+  // Fixed because the dbWire arrived with wire type FIXED. Survives for the
+  // life of the design; only the parser sets it.
+  bool isFixedInDb() const { return isFixed_; }
+  // Fixed because THIS detailed_route was given -nets and did not name it.
+  // Cleared at the start and end of every route, because the frDesign outlives
+  // the command that set it: io::Parser::updateDesign() reuses the same frNet
+  // objects on the next call, so a scope left behind would silently freeze the
+  // whole design for every route after it.
+  bool isScopeHeld() const { return scope_held_; }
+  void setScopeHeld(bool in) { scope_held_ = in; }
   bool hasGuides() const { return !guides_.empty(); }
   bool hasBTermsAboveTopLayer() const;
   // setters
@@ -203,6 +217,8 @@ class frNet : public frBlockObject
   bool is_connected_by_abutment_{false};
   bool hasInitialRouting_{false};
   bool isFixed_{false};
+  // see isScopeHeld()
+  bool scope_held_{false};
 
   // Flag to mark when a frNet has a jumper, which is a special route guide used
   // to prevent antenna violations

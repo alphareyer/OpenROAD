@@ -719,7 +719,11 @@ void FlexDRWorker::initNets_initDR(
       default:
         logger_->error(utl::DRT, 0, "initNetTerms unsupported obj.");
     }
-    if (getRipupMode() == RipUpMode::INCR && net->hasInitialRouting()) {
+    // vibeic fork: `|| net->isFixed()` -- a fixed net is never built from its
+    // guides, in any ripup mode. Without this a scoped route would still lay
+    // fresh metal for every unrouted net outside the scope.
+    if ((getRipupMode() == RipUpMode::INCR && net->hasInitialRouting())
+        || net->isFixed()) {
       continue;
     }
     nets.insert(net);
@@ -728,7 +732,8 @@ void FlexDRWorker::initNets_initDR(
   std::vector<std::unique_ptr<drConnFig>> vRouteObjs;
   std::vector<std::unique_ptr<drConnFig>> vExtObjs;
   for (auto net : nets) {
-    if (getRipupMode() == RipUpMode::INCR && net->hasInitialRouting()) {
+    if ((getRipupMode() == RipUpMode::INCR && net->hasInitialRouting())
+        || net->isFixed()) {
       continue;
     }
     vRouteObjs.clear();
@@ -1570,6 +1575,12 @@ void FlexDRWorker::initRipUpNetsFromMarkers()
     getRipUpNetsFromMarker(&marker, ripUpNets, bloatDist);
   }
   for (const auto& net : ripUpNets) {
+    // vibeic fork: NEARDRC collects its victims by proximity to a marker, not
+    // through canRipup(), so this loop would strip a fixed net's routing off
+    // the worker even though nothing is allowed to re-lay it.
+    if (net->getFrNet()->isFixed()) {
+      continue;
+    }
     for (const auto& fig : net->getRouteConnFigs()) {
       getWorkerRegionQuery().remove(fig.get());
     }
@@ -2330,6 +2341,14 @@ void FlexDRWorker::route_queue_init_queue(
       if (net->getPins().size() <= 1) {
         continue;
       }
+      // vibeic fork: a fixed net is not ours to rip up. canRipup() already
+      // says so for every marker-driven queue; "rip up ALL" was the one path
+      // that never asked, which is why a scoped route still re-laid the whole
+      // design. The net stays in the worker -- its metal is a real obstruction
+      // -- it just never enters the reroute queue.
+      if (net->getFrNet()->isFixed()) {
+        continue;
+      }
       ripupNets.push_back(net.get());
     }
     // sort nets
@@ -2371,6 +2390,13 @@ void FlexDRWorker::route_queue_init_queue(
     std::vector<drNet*> ripupNets;
     ripupNets.reserve(nets_.size());
     for (auto& net : nets_) {
+      // vibeic fork: same reason as the ALL branch. An UNROUTED net outside a
+      // -nets scope would otherwise be routed here purely because it has no
+      // wire yet, and io::Writer would then refuse to write what was routed --
+      // leaving phantom metal that only the scoped net has to dodge.
+      if (net->getFrNet()->isFixed()) {
+        continue;
+      }
       if (!net->getFrNet()->hasInitialRouting()) {
         ripupNets.push_back(net.get());
       }

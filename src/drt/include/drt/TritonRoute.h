@@ -84,6 +84,11 @@ struct ParamStruct
   bool gcVerifyCheckNdr = false;
   bool gcInloopNoCheckNdr = false;
   std::string gcDumpShapesBox;
+  // vibeic fork: -nets. The SET of nets this invocation is allowed to route,
+  // one name per line (net names carry '[' and ']' for bus bits, so no
+  // space-joined encoding survives them). Empty means the whole design, which
+  // is the historical behaviour and the default.
+  std::string routeNetsScope;
 };
 
 class TritonRoute : public PinAccessService
@@ -262,6 +267,10 @@ class TritonRoute : public PinAccessService
   void updateDirtyPAData();
 
  private:
+  // vibeic fork: the -nets scope, verbatim as the caller named it. Empty when
+  // the invocation routes the whole design.
+  std::vector<std::string> route_nets_scope_;
+
   NsMetalRepairStats ns_metal_repair_stats_;
   std::unique_ptr<frDesign> design_;
   std::unique_ptr<frDebugSettings> debug_;
@@ -287,6 +296,12 @@ class TritonRoute : public PinAccessService
   std::unique_ptr<AbstractGraphicsFactory> graphics_factory_{nullptr};
 
   void initDesign();
+  // vibeic fork: turn the -nets scope into router state. Every non-special net
+  // NOT named is marked frNet::setFixed(), which the router already reads as
+  // "this net's routing is not mine to change": it is never ripped up, never
+  // routed, and io::Writer::updateDbConn does not rewrite its dbWire. Returns
+  // the number of nets held. A no-op when the scope is empty.
+  int applyNetRouteScope();
   void initGraphics();
   void ta();
   void dr();

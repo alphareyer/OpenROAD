@@ -28,6 +28,7 @@ sta::define_cmd_args "detailed_route" {
     [-save_guide_updates]
     [-repair_pdn_vias layer]
     [-single_step_dr]
+    [-nets net_list]
 }
 
 proc detailed_route { args } {
@@ -37,7 +38,7 @@ proc detailed_route { args } {
       -via_in_pin_top_layer -via_access_layer -or_seed -or_k -bottom_routing_layer \
       -top_routing_layer -verbose -remote_host -remote_port -shared_volume \
       -cloud_size -min_access_points -repair_pdn_vias -drc_report_iter_step \
-      -gc_dump_shapes_box} \
+      -gc_dump_shapes_box -nets} \
     flags {-disable_via_gen -distributed -clean_patches -no_pin_access \
            -single_step_dr -save_guide_updates -report_unowned_gc_objects \
            -gc_verify_checkndr -gc_inloop_no_checkndr}
@@ -186,6 +187,20 @@ proc detailed_route { args } {
   } else {
     set min_access_points -1
   }
+  # -nets (vibeic fork): route ONLY these nets. Every other non-special net is
+  # held fixed for this invocation -- its existing wire is an obstruction the
+  # scoped nets must route around, and it is never rewritten, so its dbWire
+  # bytes are identical afterwards. Joined with newline, not space: net names
+  # carry bus-bit brackets and a space-joined string cannot be split back.
+  set route_nets_scope ""
+  if { [info exists keys(-nets)] } {
+    set net_list $keys(-nets)
+    if { [llength $net_list] == 0 } {
+      utl::error DRT 635 "-nets was given an empty list. Omit -nets to route\
+        the whole design."
+    }
+    set route_nets_scope [join $net_list "\n"]
+  }
   drt::detailed_route_cmd $output_maze $output_drc \
     $output_guide_coverage $db_process_node $enable_via_gen $droute_end_iter \
     $via_in_pin_bottom_layer $via_in_pin_top_layer \
@@ -193,7 +208,7 @@ proc detailed_route { args } {
     $clean_patches $no_pin_access $single_step_dr $min_access_points \
     $save_guide_updates $repair_pdn_vias $drc_report_iter_step \
     $report_unowned_gc_objects $gc_verify_checkndr $gc_inloop_no_checkndr \
-    $gc_dump_shapes_box
+    $gc_dump_shapes_box $route_nets_scope
 }
 
 proc detailed_route_num_drvs { args } {

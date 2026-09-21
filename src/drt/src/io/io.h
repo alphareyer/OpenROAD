@@ -178,6 +178,13 @@ class Writer
                 bool pin_access = false,
                 bool snapshot = false);
   void updateTrackAssignment(odb::dbBlock* block);
+  // vibeic fork: what the last updateDbConn() actually did to odb. A scoped
+  // route (detailed_route -nets) has to be able to SAY what it touched rather
+  // than assert it, and these two numbers are the measurement: nets whose
+  // dbWire was destroyed and re-encoded, and nets whose dbWire was left
+  // untouched because the net is fixed.
+  int getNetsWireWritten() const { return nets_wire_written_; }
+  int getNetsWireHeldFixed() const { return nets_wire_held_fixed_; }
 
  private:
   void fillConnFigs(bool isTA, int verbose);
@@ -207,6 +214,8 @@ class Writer
   std::map<frString, std::list<std::shared_ptr<frConnFig>>>
       connFigs_;  // all connFigs ready to def
   std::vector<frViaDef*> viaDefs_;
+  int nets_wire_written_{0};
+  int nets_wire_held_fixed_{0};
 };
 
 /**

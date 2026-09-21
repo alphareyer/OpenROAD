@@ -658,6 +658,100 @@ void TritonRoute::initDesign()
   }
 }
 
+// vibeic fork: SCOPED detailed routing.
+//
+// `detailed_route` has always been a whole-design command: it rips every net
+// up and lays the design again. That is the right default, and it is also why
+// a post-route repair -- an antenna diode inserted into one net, an ECO on a
+// handful of nets -- could not be realized. Measured on a 655-net design whose
+// single antenna violation needed one diode: the follow-up route lost 92 other
+// nets' wire entirely and shrank 55 more, and a NO-OP route of an untouched
+// routed design changed 57178 net lines and raised DRT-0206. Marking the other
+// nets dont_touch in odb does not help: the detailed router does not read that
+// property.
+//
+// The router already has the concept this needs. A net whose dbWire arrives
+// with wire type FIXED is parsed into the design (so its metal is a real
+// obstruction to everything else), is refused by FlexDRWorker::canRipup, and
+// is skipped by io::Writer::updateDbConn -- its dbWire is never rewritten, so
+// its bytes survive verbatim. What did not exist was a way to say "treat these
+// nets that way for THIS invocation" without editing the database, which would
+// itself rewrite the very wires the caller is trying to preserve.
+//
+// So the scope is applied here, after the design is parsed and before any
+// guide, track-assignment or routing work: every non-special net the caller did
+// not name is marked fixed. Nothing is written to odb, and the mark lives only
+// as long as this frDesign.
+int TritonRoute::applyNetRouteScope()
+{
+  auto* block = getDesign()->getTopBlock();
+  // Clear FIRST, unconditionally. The frDesign outlives one detailed_route:
+  // io::Parser::updateDesign() reuses the same frNet objects on the next call,
+  // and updateNetRouting() returns early for an already-routed net without
+  // touching any flag. A scope left behind would therefore freeze the whole
+  // design for every route after it -- silently, because a frozen net looks
+  // exactly like a net the router chose not to change.
+  for (const auto& unet : block->getNets()) {
+    unet->setScopeHeld(false);
+  }
+  if (route_nets_scope_.empty()) {
+    return 0;
+  }
+  if (distributed_) {
+    logger_->error(DRT,
+                   636,
+                   "detailed_route -nets is not supported with -distributed: "
+                   "the net scope is not part of what is sent to a remote "
+                   "worker, so the workers would route the whole design.");
+  }
+  frBlockObjectSet in_scope;
+  for (const std::string& name : route_nets_scope_) {
+    frNet* net = block->findNet(name);
+    if (net == nullptr) {
+      logger_->error(DRT,
+                     629,
+                     "detailed_route -nets: net {} is not in the design.",
+                     name);
+    }
+    if (net->isSpecial()) {
+      logger_->error(DRT,
+                     630,
+                     "detailed_route -nets: net {} is a special net; the "
+                     "detailed router does not route special nets.",
+                     name);
+    }
+    if (net->isFixedInDb()) {
+      logger_->error(DRT,
+                     631,
+                     "detailed_route -nets: net {} arrived with FIXED wiring, "
+                     "which the router may not change.",
+                     name);
+    }
+    in_scope.insert(net);
+  }
+  int held = 0;
+  for (const auto& unet : block->getNets()) {
+    frNet* net = unet.get();
+    if (in_scope.find(net) != in_scope.end()) {
+      continue;
+    }
+    if (net->isFixedInDb()) {
+      continue;  // already untouchable; not something this scope did
+    }
+    net->setScopeHeld(true);
+    held++;
+  }
+  logger_->info(DRT,
+                633,
+                "Scoped detailed routing: {} net(s) named, {} of {} other "
+                "net(s) held fixed (their existing wire is an obstruction and "
+                "is not rewritten).",
+                in_scope.size(),
+                held,
+                block->getNets().size() - in_scope.size());
+  return held;
+}
+
 void TritonRoute::initGraphics()
 {
   graphics_factory_->reset(
@@ -733,6 +827,27 @@ void TritonRoute::endFR()
   dr_.reset();
   io::Writer writer(getDesign(), logger_);
   writer.updateDb(db_, router_cfg_.get());
+  if (!route_nets_scope_.empty()) {
+    // Requirement (d) of a scoped route: SAY what was touched, from the write
+    // path's own count rather than from the caller's intention. If these two
+    // numbers ever disagree with the -nets list, the scope leaked and this is
+    // where it shows.
+    std::string named;
+    const int cap = 8;
+    for (int i = 0; i < (int) route_nets_scope_.size() && i < cap; i++) {
+      named += (i ? ", " : "") + route_nets_scope_[i];
+    }
+    if ((int) route_nets_scope_.size() > cap) {
+      named += fmt::format(", ... ({} more)", route_nets_scope_.size() - cap);
+    }
+    logger_->info(DRT,
+                  634,
+                  "Scoped detailed routing touched {} net(s) in the database "
+                  "and left {} net(s) byte-identical. Named: {}.",
+                  writer.getNetsWireWritten(),
+                  writer.getNetsWireHeldFixed(),
+                  named);
+  }
 
   num_drvs_ = design_->getTopBlock()->getNumMarkers();
 
@@ -2038,6 +2153,7 @@ int TritonRoute::main()
     }
   }
   initDesign();
+  applyNetRouteScope();
   bool has_routable_nets = false;
   bool has_grt_guides = false;
   for (auto* net : db_->getChip()->getBlock()->getNets()) {
@@ -2101,6 +2217,20 @@ int TritonRoute::main()
   if (!initGuide()) {
     logger_->error(DRT, 626, "Guide loading failed.");
   }
+  // Only now do the nets have guides -- applyNetRouteScope() runs before this
+  // and would call every net guideless. A named net without guides is not an
+  // error (the route simply leaves it alone) but it is never what the caller
+  // meant, so it is said once, here, where the answer is true.
+  for (const std::string& name : route_nets_scope_) {
+    frNet* net = getDesign()->getTopBlock()->findNet(name);
+    if (net != nullptr && !net->hasGuides()) {
+      logger_->warn(DRT,
+                    632,
+                    "detailed_route -nets: net {} has no route guides, so it "
+                    "cannot be routed. Run global routing for it first.",
+                    name);
+    }
+  }
   prep();
   ta();
   if (distributed_) {
@@ -2127,6 +2257,11 @@ int TritonRoute::main()
     // above had even added its patches.
     verifyRoute();
     endFR();
+  }
+  // The scope belongs to this command, not to the design. endFR() has already
+  // written the database, so nothing downstream needs the marks.
+  for (const auto& unet : getDesign()->getTopBlock()->getNets()) {
+    unet->setScopeHeld(false);
   }
   logger_->info(DRT, 501, "Runtime: {:.2f}s", timer.elapsed());
   return 0;
@@ -2522,6 +2657,20 @@ void TritonRoute::setParams(const ParamStruct& params)
     std::istringstream ss(params.gcDumpShapesBox);
     ss >> router_cfg_->GC_DUMP_X1 >> router_cfg_->GC_DUMP_Y1
         >> router_cfg_->GC_DUMP_X2 >> router_cfg_->GC_DUMP_Y2;
+  }
+  // vibeic fork: -nets. One name per line; a blank line is not a net name.
+  // Re-assigned (not appended to) so a second detailed_route in the same
+  // session without -nets is a whole-design route again, which is what the
+  // absence of the option says.
+  route_nets_scope_.clear();
+  if (!params.routeNetsScope.empty()) {
+    std::istringstream ss(params.routeNetsScope);
+    std::string line;
+    while (std::getline(ss, line)) {
+      if (!line.empty()) {
+        route_nets_scope_.push_back(line);
+      }
+    }
   }
 }
 
