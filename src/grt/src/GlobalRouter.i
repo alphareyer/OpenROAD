@@ -20,6 +20,7 @@ using sta::LibertyPort;
 %}
 
 %include "../../Exception.i"
+%include <std_string.i>
 
 %ignore grt::GlobalRouter::init;
 %ignore grt::GlobalRouter::initDebugFastRoute;
@@ -66,6 +67,22 @@ void
 routed_state_discard()
 {
   getGlobalRouter()->discardRoutedStateSnapshot();
+}
+
+// The nets the last repair_antennas pass left unwired, newline-joined.
+// Newline-joined for the same reason as ant::antenna_violating_nets: DEF/LEF
+// names carry [ ] { } and a space-joined string cannot be split back.
+std::string
+repaired_nets()
+{
+  std::string names;
+  for (odb::dbNet* net : getGlobalRouter()->getLastRepairedNets()) {
+    if (!names.empty()) {
+      names += "\n";
+    }
+    names += net->getConstName();
+  }
+  return names;
 }
 
 void

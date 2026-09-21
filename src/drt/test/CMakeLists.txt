@@ -6,6 +6,7 @@ or_integration_tests(
     report_unowned_gc_objects
     ispd18_sample
     ispd18_sample_incr
+    ispd18_sample_scoped
     ndr_vias1
     ndr_vias2
     ndr_vias3

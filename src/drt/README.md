@@ -64,6 +64,7 @@ detailed_route
     [-save_guide_updates]
     [-repair_pdn_vias layer]
     [-single_step_dr]
+    [-nets net_list]
 ```
 
 #### Options
@@ -95,6 +96,7 @@ detailed_route
 | `-no_pin_access` | Disables pin access for routing. |
 | `-save_guide_updates` | Flag to save guides updates. |
 | `-repair_pdn_vias` | This option is used for PDKs where M1 and M2 power rails run in parallel. |
+| `-nets` | Route ONLY the named nets (a Tcl list of net names). Every other non-special net is held fixed for this invocation: its existing wire and vias act as obstructions, it is never ripped up, and its `dbWire` is not rewritten, so its bytes are identical afterwards. Use it to realize a post-route repair -- an antenna diode, an ECO -- without re-laying the design. Omit it to route the whole design, which is the default. |
 
 #### Developer arguments
 

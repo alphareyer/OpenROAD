@@ -275,6 +275,15 @@ class GlobalRouter
   // See class IncrementalGRoute.
   void addDirtyNet(odb::dbNet* net);
   odb::PtrSet<odb::dbNet> getDirtyNets() { return dirty_nets_; }
+  // vibeic fork: the nets the LAST repair_antennas pass left for the detailed
+  // router to re-realize -- the nets whose detailed wire updateDirtyRoutes()
+  // destroyed after the diodes went in. This is the scope a follow-up
+  // `detailed_route -nets` must be given; without it the caller can only guess,
+  // and the only available guess was "the whole design".
+  const std::vector<odb::dbNet*>& getLastRepairedNets() const
+  {
+    return last_repaired_nets_;
+  }
   // check_antennas
   bool haveRoutes();
   bool haveDbGuides();
@@ -653,6 +662,7 @@ class GlobalRouter
   odb::dbBlock* block_;
 
   odb::PtrSet<odb::dbNet> dirty_nets_;
+  std::vector<odb::dbNet*> last_repaired_nets_;
   std::vector<odb::dbNet*> nets_to_route_;
 
   RepairAntennas* repair_antennas_;

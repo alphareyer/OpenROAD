@@ -748,6 +748,9 @@ int GlobalRouter::repairAntennas(odb::dbMTerm* diode_mterm,
 
   bool violations = true;
   int itr = 0;
+  // vibeic fork: reset, so "no nets were repaired" is reported as the empty
+  // set rather than as whatever the previous pass left behind.
+  last_repaired_nets_.clear();
   std::vector<odb::dbNet*> nets_to_repair;
   for (odb::dbNet* db_net : block_->getNets()) {
     nets_to_repair.push_back(db_net);
@@ -812,6 +815,11 @@ int GlobalRouter::repairAntennas(odb::dbMTerm* diode_mterm,
       for (odb::dbNet* db_net : dirty_nets_) {
         nets_to_repair.push_back(db_net);
       }
+      // vibeic fork: remember them. updateRoutes() below clears dirty_nets_
+      // AND destroys these nets' detailed wire, so after this call they are
+      // exactly the nets a detailed route has to put back -- and the only
+      // nets it is allowed to touch.
+      last_repaired_nets_ = nets_to_repair;
       incr_groute.updateRoutes();
       saveGuides(nets_to_repair);
     }
