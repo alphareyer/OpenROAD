@@ -37,6 +37,7 @@ COMPULSORY_TESTS = [
     "gcd_signal_em",
     "gcd_gt2n_backside",
     "gcd_gt2n_backside_wo_pins",
+    "gcd_gt2n_backside_wo_pins_straps",
     "gcd_no_vsrc",
     "gcd_no_vsrc_reuse",
     "gcd_sizing_vdd",
