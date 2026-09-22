@@ -15,6 +15,7 @@ COMPULSORY_TESTS = [
     "45_gcd",
     "dup_pattern_names",
     "ext_pattern",
+    "extract_preserves_routing",
     "gcd",
     "generate_pattern",
     "names",
@@ -93,6 +94,10 @@ filegroup(
                 test_name + ".*",
             ],
         ) + {
+            "extract_preserves_routing": [
+                "45_gcd.def",
+                "45_gcd.spefok",
+            ],
             "ext_pattern": ["generate_pattern.defok"],
             "gcd": ["ext_pattern.rules"],
             "no_merging": [

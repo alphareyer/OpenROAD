@@ -111,6 +111,7 @@ TESTS = [
     "repair_antennas_from_odb_cugr",
     "repair_antennas_odb_roundtrip",
     "repair_antennas_reroute",
+    "repair_antennas_reroute_output_drc",
     "repair_antennas_best_state",
     "report_wire_length1",
     "report_wire_length2",
