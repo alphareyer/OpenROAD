@@ -1025,16 +1025,35 @@ void RepairDesign::repairNet(sta::Net* net,
         repaired_net = true;
 
         debugPrint(logger_, RSZ, "repair_net", 3, "fanout violation");
-        LoadRegion region = findLoadRegions(net, drvr_pin, max_fanout);
         corner_ = corner;
-        makeRegionRepeaters(region,
-                            max_fanout,
-                            1,
-                            drvr_pin,
-                            check_slew,
-                            check_cap,
-                            max_length,
-                            resize_drvr);
+        if (max_fanout == 1) {
+          // A tree whose branching factor is one cannot reduce the source
+          // fanout: each leaf repeater leaves another load on the source.
+          // Put one repeater on the source net, then repair its output for
+          // slew/capacitance using the selected buffer cell's own limits.
+          sta::PinSeq loads = findLoads(drvr_pin);
+          if (loads.size() > 1) {
+            sta::PinSeq repeater_inputs;
+            makeFanoutRepeater(loads,
+                               repeater_inputs,
+                               findBbox(loads),
+                               db_network_->location(drvr_pin),
+                               check_slew,
+                               check_cap,
+                               max_length,
+                               resize_drvr);
+          }
+        } else {
+          LoadRegion region = findLoadRegions(net, drvr_pin, max_fanout);
+          makeRegionRepeaters(region,
+                              max_fanout,
+                              1,
+                              drvr_pin,
+                              check_slew,
+                              check_cap,
+                              max_length,
+                              resize_drvr);
+        }
       }
     }
 
