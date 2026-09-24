@@ -52,6 +52,7 @@ add_library(rcx_lib
   parse.cpp
   find_some_net.cpp
   multiChipExtractor.cpp
+  routingPreserver.cpp
   multiChipSpefWriter.cpp
   interChipModel.cpp
 )
