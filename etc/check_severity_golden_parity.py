@@ -37,7 +37,7 @@ Deliberately narrow and fail-safe:
 
   * An id+text emitted at more than one severity is SKIPPED, not flagged. Both
     spellings are legitimately reachable and the source cannot settle it.
-    (DPL-33 vs DPL-40 is the deliberate two-id version of that, unaffected.)
+    (DPL-33 vs DPL-41 is the deliberate two-id version of that, unaffected.)
   * A message with no literal prefix to compare (format starts with `{}`) is
     skipped rather than guessed at.
   * It says nothing about the REST of a golden. A test can still be red for a
