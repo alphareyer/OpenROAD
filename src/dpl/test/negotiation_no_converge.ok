@@ -41,7 +41,7 @@ legalized HPWL             61.3 u
 delta HPWL                    0 %
 
 [WARNING DPL-0004] Placed in rows check failed (1).
-[WARNING DPL-0040] detailed placement checks failed during check placement: 1 violation(s) returned to caller.
+[WARNING DPL-0041] detailed placement checks failed during check placement: 1 violation(s) returned to caller.
 RETURNED_VIOLATIONS: 1
 CALLER_SAW_NON_PASS
 FLOW_CONTINUED

@@ -152,7 +152,7 @@ int Opendp::checkPlacement(const bool verbose,
     //     unwrapped flow correctly aborts with a non-zero exit status.
     //
     //   no_abort=true -- the caller has stated it will handle the result, so
-    //     we warn under a DISTINCT id (DPL-40) and return the violation count.
+    //     we warn under a DISTINCT id (DPL-41) and return the violation count.
     //     The caller is then obliged to consult that count. Returning a number
     //     is what makes the outcome machine-visible: a warning nobody can
     //     consult is indistinguishable from a silent pass. The id differs from
@@ -161,7 +161,7 @@ int Opendp::checkPlacement(const bool verbose,
     //     able to tell them apart.
     if (no_abort) {
       logger_->warn(DPL,
-                    40,
+                    41,
                     "detailed placement checks failed during check placement: "
                     "{} violation(s) returned to caller.",
                     violations);
