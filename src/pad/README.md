@@ -172,6 +172,12 @@ make_io_sites
 | `-rotation_corner` | Rotation to apply to the corner sites to ensure pads are placed correctly. The default value is `R0` for the south west (lower left) corner. |
 | `-ring_index` | Used to specify the index of the ring in case of multiple rings. |
 
+Here, *horizontal* and *vertical* describe the pad site's orientation, not
+the direction in which the row runs. The horizontal site and its rotation
+apply to `IO_EAST` and `IO_WEST`; the vertical site and its rotation apply to
+`IO_NORTH` and `IO_SOUTH`. Check the final row and pad orientations when
+changing either rotation, as a rotated site's pin locations also change.
+
 
 ### Remove IO Rows
 
