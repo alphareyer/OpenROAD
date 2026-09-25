@@ -150,6 +150,7 @@ class TritonCTS
                          odb::dbNet* clkInputNet,
                          const std::string& sdcClock,
                          TreeBuilder* parentBuilder);
+  void checkDontTouchSinks(odb::dbNet* net, const Clock& clockNet);
   void disconnectAllSinksFromNet(odb::dbNet* net);
   void disconnectAllPinsFromNet(odb::dbNet* net);
   void checkUpstreamConnections(odb::dbNet* net);
