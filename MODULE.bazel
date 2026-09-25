@@ -142,13 +142,21 @@ bazel_dep(name = "freetype", version = "2.13.3.bcr.2")
 # dereference (76.1.bcr.4, 78.2.bcr.2, ...), so a version bump alone would
 # not help; the patch null-checks Runfiles::Create()'s result and falls
 # through to the "" default instead of crashing.
+#
+# 76.1.bcr.4 rather than .bcr.3: the two differ only in icu's own MODULE.bazel,
+# where .bcr.4 gives the `icu_dat` http_archive the `integrity` that .bcr.3
+# lacks. The overlay, the patches and the 76.1 source are the same, so the
+# patch above applies unchanged. Without a checksum no cache can serve that
+# 27.4 MB tarball -- not --repository_cache, not --distdir -- so bazel
+# downloaded it again on every build: 463.7 s of a 469 s and 709.4 s of a
+# 715 s analysis phase, with every other repository already cached.
 single_version_override(
     module_name = "icu",
     patch_strip = 1,
     patches = [
         "//bazel/icu-patches:0001-putil-null-check-bazel-runfiles-before-dereference.patch",
     ],
-    version = "76.1.bcr.3",
+    version = "76.1.bcr.4",
 )
 
 # gawk is transitive (abc -> ncurses -> gawk; yosys -> gawk). Same gnulib
