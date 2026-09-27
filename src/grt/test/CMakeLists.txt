@@ -106,6 +106,7 @@ or_integration_tests(
     repair_antennas_post_drt_above_max_layer_cugr
     repair_antennas_post_drt_below_min_cugr
     repair_antennas_post_drt_cugr
+    repair_antennas_post_drt_pa_dirty
     repair_antennas_reroute
     repair_antennas_reroute_output_drc
     repair_antennas_best_state

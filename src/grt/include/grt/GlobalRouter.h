@@ -667,6 +667,10 @@ class GlobalRouter
 
   odb::PtrSet<odb::dbNet> dirty_nets_;
   std::vector<odb::dbNet*> last_repaired_nets_;
+  // vibeic fork: while repair_antennas re-routes its dirty nets, every net
+  // destroyNetWire() takes a detailed wire from, in the order it did so.
+  bool track_destroyed_wires_ = false;
+  std::vector<odb::dbNet*> destroyed_wire_nets_;
   std::vector<odb::dbNet*> nets_to_route_;
 
   RepairAntennas* repair_antennas_;
