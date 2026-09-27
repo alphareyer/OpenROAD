@@ -134,6 +134,16 @@ static std::string tclCommand(std::initializer_list<const char*> words)
 FOREACH_TOOL(X)
 #undef X
 
+// The Tcl path writes the -metrics file from the Tcl exit handler that
+// OpenRoad::init registers, but Python never calls Tcl_Exit: a script that
+// ends returns through Py_RunMain() and a sys.exit(n) leaves through
+// Py_Exit(). Both run Py_FinalizeEx(), which calls the Py_AtExit()
+// functions last, after the interpreter is gone.
+static void finalizeMetricsAtPythonExit()
+{
+  ord::OpenRoad::openRoad()->getLogger()->finalizeMetrics();
+}
+
 #if PY_VERSION_HEX >= 0x03080000
 static void initPython(int argc, char* argv[], const bool exit_after_cmd_file)
 #else
@@ -196,6 +206,11 @@ static void initPython()
       fprintf(stderr, "Error: could not add module openroad\n");
       exit(1);
     }
+  }
+
+  if (metrics_filename && Py_AtExit(finalizeMetricsAtPythonExit) != 0) {
+    fprintf(stderr, "Error: could not register the metrics writer\n");
+    exit(1);
   }
 }
 #endif

@@ -82,6 +82,16 @@ filegroup(
     for test_name in ALL_TESTS
 ]
 
+# pass/fail rather than a log compare: the log depends on whether this
+# openroad has -python (the bazel binary does not, and the test says skip).
+regression_test(
+    name = "python_metrics_exit",
+    check_log = False,
+    check_passfail = True,
+    data = [":regression_resources"],
+    visibility = ["//visibility:public"],
+)
+
 test_suite(
     name = "cpp_tests",
     tests = [
