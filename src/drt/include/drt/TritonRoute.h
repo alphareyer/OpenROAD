@@ -274,6 +274,10 @@ class TritonRoute : public PinAccessService
   // marker counts and writes the SURVIVING markers to `filename`, so a pass
   // that silently repairs nothing and a pass that manufactures new violations
   // are both visible in the same output.
+  // vibeic fork: run the production post-route min-area repair
+  // (patchMinAreaViolations) on the loaded design and report the whole-design
+  // marker count before and after it, so the pass is testable without a route.
+  void repairMinArea(const char* filename, int num_threads);
   void repairNonSufficientMetal(const char* filename, int num_threads);
   // vibeic fork: post-route whole-design DRC VERIFICATION.
   //
