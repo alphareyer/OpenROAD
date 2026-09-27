@@ -11,6 +11,7 @@ or_integration_tests(
     ndr_vias2
     ndr_vias3
     ndr_no_auto_taper
+    min_area_pad_on_l_pin
     ns_metal_repair
     ns_metal_repair_blocked
     obstruction

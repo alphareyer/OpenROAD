@@ -1,0 +1,22 @@
+VERSION 5.8 ;
+BUSBITCHARS "[]" ;
+DIVIDERCHAR "/" ;
+
+# One output pin shaped as an L on met1: a short vertical leg and, abutting
+# its top edge, a long horizontal leg. The two legs are one polygon.
+MACRO l_pin_cell
+  CLASS BLOCK ;
+  ORIGIN 0 0 ;
+  SIZE 2.1 BY 0.7 ;
+  PIN Z
+    DIRECTION OUTPUT ;
+    USE SIGNAL ;
+    PORT
+      LAYER met1 ;
+        RECT 0.075 0.250 0.215 0.440 ;
+        RECT 0.075 0.440 2.000 0.580 ;
+    END
+  END Z
+END l_pin_cell
+
+END LIBRARY

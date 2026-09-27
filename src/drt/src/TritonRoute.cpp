@@ -1680,10 +1680,12 @@ int TritonRoute::patchMinAreaViolations()
       // Merge all of this net's metal on lNum into connected polygons.
       gtl::polygon_90_set_data<frCoord> net_set;
       bool any = false;
+      std::vector<odb::Rect> net_rects;
       auto insert_rect = [&](const odb::Rect& r) {
         if (r.xMin() >= r.xMax() || r.yMin() >= r.yMax()) {
           return;
         }
+        net_rects.push_back(r);
         net_set.insert(
             gtl::rectangle_data<frCoord>(r.xMin(), r.yMin(), r.xMax(), r.yMax()));
         any = true;
@@ -1752,37 +1754,34 @@ int TritonRoute::patchMinAreaViolations()
       // own routing extent; a pad that abuts a pin large enough to already
       // satisfy min-area is left untouched.  This is a true no-op wherever the
       // router already left DRC-clean connected metal, on ANY PDK.
-      gtl::rectangle_data<frCoord> net_bbox;
-      gtl::extents(net_bbox, net_set);
-      const odb::Rect net_win(gtl::xl(net_bbox) - mgrid,
-                              gtl::yl(net_bbox) - mgrid,
-                              gtl::xh(net_bbox) + mgrid,
-                              gtl::yh(net_bbox) + mgrid);
-      frRegionQuery::Objects<frBlockObject> fixed_objs;
-      rq->query(net_win, lNum, fixed_objs);
-      gtl::polygon_90_set_data<frCoord> full_set(net_set);
-      for (const auto& [box, obj] : fixed_objs) {
+      // The connected component is found by GROWING the query window from the
+      // routing polygon until the component stops growing. A single window
+      // sized to the net's own routing extent cannot see cell metal that
+      // connects just beyond it: measured on gf180mcuD (subservient), a Via1
+      // pad that is the net's topmost Metal1 shape overlaps the vertical leg of
+      // an L-shaped output pin whose horizontal leg starts 10 dbu above that
+      // window. The leg was never queried, the component read 540500 dbu^2
+      // against a 577600 min-area, and the DRC-clean pad was "repaired" --
+      // with a patch that left a 0.01 um same-net notch under the leg
+      // (3 Metal Spacing markers on an otherwise clean route).
+      //
+      // The component is kept WITH its holes: a ring of cell metal is one
+      // polygon to a DRC deck, and slicing it into hole-free fragments would
+      // again report a fragment's area as the component's.
+      auto is_cell_metal = [](frBlockObject* obj) {
         if (obj == nullptr) {
-          continue;
+          return false;
         }
         switch (obj->typeId()) {
           case frcInstTerm:      // placed std-cell pin metal
           case frcInstBlockage:  // placed std-cell obstruction metal
           case frcBlockage:      // fixed routing obstruction
           case frcBTerm:         // IO pin metal
-            break;
+            return true;
           default:
-            continue;  // signal/special-net routing: not fixed cell geometry
+            return false;  // signal/special-net routing: not fixed cell geometry
         }
-        if (box.xMin() >= box.xMax() || box.yMin() >= box.yMax()) {
-          continue;
-        }
-        full_set.insert(gtl::rectangle_data<frCoord>(
-            box.xMin(), box.yMin(), box.xMax(), box.yMax()));
-      }
-
-      std::vector<gtl::polygon_90_data<frCoord>> full_polys;
-      full_set.get(full_polys);
+      };
 
       std::ofstream diag_ofs;
       if (const char* diag = std::getenv("VIBE_MINAREA_DIAG")) {
@@ -1791,23 +1790,69 @@ int TritonRoute::patchMinAreaViolations()
 
       // Area of the connected component of the full (routing + cell) metal that
       // contains a given routing polygon -- what the physical min-area DRC
-      // measures for that shape.
+      // measures for that shape. Returns as soon as the component is known to
+      // meet min-area, so a pad on a large pin costs one small query.
       auto component_area = [&](const gtl::polygon_90_data<frCoord>& rpoly,
                                 frArea fallback) -> frArea {
-        for (const auto& fp : full_polys) {
-          gtl::polygon_90_set_data<frCoord> inter;
-          {
-            using boost::polygon::operators::operator+=;
-            using boost::polygon::operators::operator&=;
-            inter += fp;
-            inter &= rpoly;
+        gtl::rectangle_data<frCoord> rext;
+        gtl::extents(rext, rpoly);
+        odb::Rect win(gtl::xl(rext) - mgrid,
+                      gtl::yl(rext) - mgrid,
+                      gtl::xh(rext) + mgrid,
+                      gtl::yh(rext) + mgrid);
+        frArea area = fallback;
+        while (true) {
+          gtl::polygon_90_set_data<frCoord> comp_set;
+          for (const odb::Rect& r : net_rects) {
+            if (r.intersects(win)) {
+              comp_set.insert(gtl::rectangle_data<frCoord>(
+                  r.xMin(), r.yMin(), r.xMax(), r.yMax()));
+            }
           }
-          if (gtl::area(inter) == 0) {
-            continue;  // not the component holding this routing polygon
+          frRegionQuery::Objects<frBlockObject> fixed_objs;
+          rq->query(win, lNum, fixed_objs);
+          for (const auto& [box, obj] : fixed_objs) {
+            if (!is_cell_metal(obj) || box.xMin() >= box.xMax()
+                || box.yMin() >= box.yMax()) {
+              continue;
+            }
+            comp_set.insert(gtl::rectangle_data<frCoord>(
+                box.xMin(), box.yMin(), box.xMax(), box.yMax()));
           }
-          return static_cast<frArea>(gtl::area(fp));
+          std::vector<gtl::polygon_90_with_holes_data<frCoord>> comps;
+          comp_set.get(comps);
+          const gtl::polygon_90_with_holes_data<frCoord>* hit = nullptr;
+          for (const auto& fp : comps) {
+            gtl::polygon_90_set_data<frCoord> inter;
+            {
+              using boost::polygon::operators::operator+=;
+              using boost::polygon::operators::operator&=;
+              inter += fp;
+              inter &= rpoly;
+            }
+            if (gtl::area(inter) != 0) {
+              hit = &fp;
+              break;
+            }
+          }
+          if (hit == nullptr) {
+            return area;
+          }
+          area = static_cast<frArea>(gtl::area(*hit));
+          if (area >= min_area) {
+            return area;  // already clean: no need to see the rest of it
+          }
+          gtl::rectangle_data<frCoord> cext;
+          gtl::extents(cext, *hit);
+          const odb::Rect reach(gtl::xl(cext) - mgrid,
+                                gtl::yl(cext) - mgrid,
+                                gtl::xh(cext) + mgrid,
+                                gtl::yh(cext) + mgrid);
+          if (win.contains(reach)) {
+            return area;  // nothing outside the window can touch it
+          }
+          win.merge(reach);
         }
-        return fallback;
       };
 
       // Flag a routing polygon ONLY when its full physical connected component
@@ -2757,6 +2802,44 @@ void TritonRoute::checkDRC(const char* filename,
 // The surviving markers are written to `filename` in the same format checkDRC
 // uses, so a junction the pass correctly REFUSES to repair stays visible and
 // diffable rather than disappearing into a count.
+void TritonRoute::repairMinArea(const char* filename, int num_threads)
+{
+  router_cfg_->GC_IGNORE_PDN_LAYER_NUM = -1;
+  router_cfg_->REPAIR_PDN_LAYER_NUM = -1;
+  router_cfg_->MAX_THREADS = num_threads;
+  initDesign();
+  auto gcellGrid = db_->getChip()->getBlock()->getGCellGrid();
+  if (gcellGrid != nullptr && gcellGrid->getNumGridPatternsX() == 1
+      && gcellGrid->getNumGridPatternsY() == 1) {
+    io::GuideProcessor guide_processor(
+        getDesign(), db_, logger_, router_cfg_.get());
+    guide_processor.readGuides();
+    guide_processor.buildGCellPatterns();
+  } else if (!initGuide()) {
+    logger_->error(DRT, 715, "GCELLGRID is undefined");
+  }
+
+  const odb::Rect box = design_->getTopBlock()->getBBox();
+
+  design_->getRegionQuery()->initDRObj();
+  frList<std::unique_ptr<frMarker>> before;
+  getDRCMarkers(before, box);
+
+  const int patched = patchMinAreaViolations();
+
+  design_->getRegionQuery()->initDRObj();
+  frList<std::unique_ptr<frMarker>> after;
+  getDRCMarkers(after, box);
+
+  logger_->info(DRT,
+                713,
+                "Min-area repair check: before={} patched={} after={}.",
+                before.size(),
+                patched,
+                after.size());
+  reportDRC(filename, after, "DRC", box);
+}
+
 void TritonRoute::repairNonSufficientMetal(const char* filename,
                                            int num_threads)
 {
