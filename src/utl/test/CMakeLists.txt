@@ -12,6 +12,7 @@ or_integration_tests(
     test_suppress_message
   PASSFAIL_TESTS
     cpp_tests
+    python_metrics_exit
 )
 
 #test_error_exception
