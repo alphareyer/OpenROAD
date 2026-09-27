@@ -75,6 +75,7 @@ std::unique_ptr<Shape> Shape::copy() const
   shape->iterm_connections_ = iterm_connections_;
   shape->bterm_connections_ = bterm_connections_;
   shape->allow_non_preferred_change_ = allow_non_preferred_change_;
+  shape->run_direction_ = run_direction_;
   return shape;
 }
 

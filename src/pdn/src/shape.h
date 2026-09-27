@@ -137,9 +137,34 @@ class Shape
   // would stop a shape short of the wall of a notch, which is the same edge.
   void setIsDieAbsence() { die_absence_ = true; }
 
-  bool isHorizontal() const { return rect_.dx() > rect_.dy(); }
+  // The direction a shape runs in is read from its aspect ratio unless the
+  // shape was made knowing it. A pad connection strap runs across the pad
+  // edge whatever its proportions: from a shallow pin to a ring close to the
+  // pad it can be shorter than it is wide, and reading it by its aspect ratio
+  // turns it sideways -- `cut` then stretches a violation at its pad end
+  // across its whole length and removes the strap (see setRunDirection).
+  bool isHorizontal() const
+  {
+    if (run_direction_ != odb::dbTechLayerDir::NONE) {
+      return run_direction_ == odb::dbTechLayerDir::HORIZONTAL;
+    }
+    return rect_.dx() > rect_.dy();
+  }
   bool isSquare() const { return rect_.dx() == rect_.dy(); }
-  bool isVertical() const { return rect_.dx() < rect_.dy(); }
+  bool isVertical() const
+  {
+    if (run_direction_ != odb::dbTechLayerDir::NONE) {
+      return run_direction_ == odb::dbTechLayerDir::VERTICAL;
+    }
+    return rect_.dx() < rect_.dy();
+  }
+  // Declare the direction this shape runs in; the obstruction is regenerated
+  // because its end-of-line extension follows the direction.
+  void setRunDirection(odb::dbTechLayerDir::Value direction)
+  {
+    run_direction_ = direction;
+    generateObstruction();
+  }
 
   virtual odb::dbTechLayerDir getLayerDirection() const;
 
@@ -255,6 +280,7 @@ class Shape
   bool allow_non_preferred_change_;
   bool is_locked_;
   bool die_absence_{false};
+  odb::dbTechLayerDir::Value run_direction_{odb::dbTechLayerDir::NONE};
 
   odb::Rect obs_;
 
