@@ -1316,6 +1316,15 @@ void PadDirectConnectionStraps::makeShapesFacingCore(
 
       auto shape = std::make_unique<Shape>(
           layer, net, shape_rect, odb::dbWireShapeType::STRIPE);
+      // The strap runs from the pin to the ring across the pad edge. Measured
+      // on gf180mcuD: a 1.0 um deep ground-pad pin on the west edge gives a
+      // strap 8.82 um long and 9.5 um wide; read by its aspect ratio it was
+      // vertical, the pad's own obstruction at its west end was stretched
+      // across all of it, every strap was cut away and the core's ground grid
+      // was left without a source.
+      shape->setRunDirection(is_horizontal_strap
+                                 ? odb::dbTechLayerDir::HORIZONTAL
+                                 : odb::dbTechLayerDir::VERTICAL);
       // use intersection of pin_rect to ensure max width limitation is
       // preserved
       shape->addITermConnection(pin_rect.intersect(shape_rect));

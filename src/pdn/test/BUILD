@@ -148,6 +148,7 @@ COMPULSORY_TESTS = [
     "pads_connect_from_non_pref_edge",
     "pads_ihp_sg13g2_balance",
     "pads_placed_not_fixed",
+    "pads_short_strap",
     "pads_straps_through_pads",
     "pads_via_repair_through_pads",
     "polygon_core_grid",
