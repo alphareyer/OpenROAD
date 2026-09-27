@@ -3046,7 +3046,16 @@ void dbNetwork::makeTopCell()
 Port* dbNetwork::makeTopPort(dbBTerm* bterm)
 {
   const char* port_name = bterm->getConstName();
-  Port* port = makePort(top_cell_, port_name);
+  // A BTerm destroyed and re-created under the same name must get its old
+  // port back. sta::NetworkEdit cannot remove a port (dbStaCbk::
+  // inDbBTermDestroy only disconnects it), so making a new one each time left
+  // one top-cell port per creation: every pdngen call creates and destroys a
+  // temporary supply BTerm, and write_verilog then declared VDD/VSS once per
+  // pdngen call in the session -- invalid Verilog.
+  Port* port = findPort(top_cell_, port_name);
+  if (port == nullptr) {
+    port = makePort(top_cell_, port_name);
+  }
   PortDirection* dir = dbToSta(bterm->getSigType(), bterm->getIoType());
   setDirection(port, dir);
   registerConcretePort(port);
