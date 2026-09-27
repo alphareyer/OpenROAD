@@ -822,7 +822,39 @@ int GlobalRouter::repairAntennas(odb::dbMTerm* diode_mterm,
       // exactly the nets a detailed route has to put back -- and the only
       // nets it is allowed to touch.
       last_repaired_nets_ = nets_to_repair;
+      destroyed_wire_nets_.clear();
+      track_destroyed_wires_ = true;
       incr_groute.updateRoutes();
+      track_destroyed_wires_ = false;
+      // vibeic fork: updateRoutes() first refreshes pin access around the new
+      // diodes (PinAccessService::updateDirtyPinAccess), and every
+      // dbITerm::setAccessPoint that writes marks that iterm's net dirty
+      // (GRouteDbCbk::inDbITermPostSetAccessPoints). updateDirtyNets() then
+      // destroys the detailed wire of EVERY dirty net but re-routes only those
+      // whose pins moved, so a neighbour whose access point was merely
+      // rewritten loses its wire, is not re-routed, and was not in the set
+      // snapshotted above. Every net that lost its wire here is reported, so a
+      // follow-up `detailed_route -nets [grt::repaired_net_names]` puts back
+      // all of them.
+      int unreported = 0;
+      for (odb::dbNet* db_net : destroyed_wire_nets_) {
+        if (std::find(last_repaired_nets_.begin(),
+                      last_repaired_nets_.end(),
+                      db_net)
+            == last_repaired_nets_.end()) {
+          last_repaired_nets_.push_back(db_net);
+          unreported++;
+        }
+      }
+      destroyed_wire_nets_.clear();
+      if (unreported > 0) {
+        logger_->warn(GRT,
+                      327,
+                      "{} net(s) lost their detailed routing to the pin access "
+                      "update around the inserted diodes; they are reported "
+                      "for re-route with the repaired nets.",
+                      unreported);
+      }
       saveGuides(nets_to_repair);
     }
     repair_antennas_->clearViolations();
@@ -1458,6 +1490,9 @@ void GlobalRouter::destroyNetWire(Net* net)
 {
   odb::dbWire* wire = net->getDbNet()->getWire();
   if (wire != nullptr) {
+    if (track_destroyed_wires_) {
+      destroyed_wire_nets_.push_back(net->getDbNet());
+    }
     // removeWireUsage releases FastRoute capacity obstructions. CUGR's
     // release happens in updateNet, which drops the net's adopted tree
     // demand before the reroute.
