@@ -72,6 +72,15 @@ if { [string first "-python" $help] < 0 } {
   if { ![check_run python_raise py "$probe\nraise RuntimeError(\"probe\")" 1] } {
     set ok 0
   }
+  # A script that builds its own openroad.Tech() makes it the current
+  # OpenRoad, and Python frees it before the exit handler runs; the metrics
+  # of the OpenRoad main() created must still be written, without a crash.
+  if { ![check_run python_own_tech py "$probe\nimport openroad\nt = openroad.Tech()\ndel t" 0] } {
+    set ok 0
+  }
+  if { ![check_run python_own_tech_kept py "$probe\nimport openroad\nt = openroad.Tech()" 0] } {
+    set ok 0
+  }
   if { ![check_run tcl_end tcl "utl::metric_integer \"probe__count\" 7" 0] } {
     set ok 0
   }

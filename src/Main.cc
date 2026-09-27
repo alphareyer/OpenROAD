@@ -139,9 +139,21 @@ FOREACH_TOOL(X)
 // ends returns through Py_RunMain() and a sys.exit(n) leaves through
 // Py_Exit(). Both run Py_FinalizeEx(), which calls the Py_AtExit()
 // functions last, after the interpreter is gone.
+//
+// The logger is captured when the handler is registered, not looked up when
+// it runs. A script may build its own openroad.Tech(), which makes a new
+// OpenRoad the current one and, when Python frees it during finalization,
+// resets the current OpenRoad to null. Looking it up at exit then
+// dereferences null (SIGSEGV in Py_FinalizeEx for every librelane odbpy
+// step). The logger that carries the -metrics sink belongs to the OpenRoad
+// main() created, which is never freed, so the captured pointer stays valid.
+static utl::Logger* python_metrics_logger = nullptr;
+
 static void finalizeMetricsAtPythonExit()
 {
-  ord::OpenRoad::openRoad()->getLogger()->finalizeMetrics();
+  if (python_metrics_logger != nullptr) {
+    python_metrics_logger->finalizeMetrics();
+  }
 }
 
 #if PY_VERSION_HEX >= 0x03080000
@@ -208,6 +220,9 @@ static void initPython()
     }
   }
 
+  if (metrics_filename) {
+    python_metrics_logger = ord::OpenRoad::openRoad()->getLogger();
+  }
   if (metrics_filename && Py_AtExit(finalizeMetricsAtPythonExit) != 0) {
     fprintf(stderr, "Error: could not register the metrics writer\n");
     exit(1);
