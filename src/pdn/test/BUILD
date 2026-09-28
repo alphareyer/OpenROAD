@@ -151,6 +151,7 @@ COMPULSORY_TESTS = [
     "pads_short_strap",
     "pads_straps_through_pads",
     "pads_via_repair_through_pads",
+    "pdngen_twice_one_top_port",
     "polygon_core_grid",
     "polygon_core_grid_extend_to_boundary",
     "polygon_core_grid_rings_asymmetric",
