@@ -51,6 +51,7 @@ or_integration_tests(
   PASSFAIL_TESTS
     incremental02
     place_ios01
+    place_ios_few_cells
     place_ios_top_layer
 )
 
