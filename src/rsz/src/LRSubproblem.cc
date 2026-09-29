@@ -403,9 +403,22 @@ bool LRSubproblem::snapshot(sta::Instance* inst,
   // lazy caches and must not be touched from workers.
   snap.cur_leakage = leakageOrArea(cur_cell);
   sta::LibertyCellSeq candidates = resizer_->getSwappableCells(cur_cell);
+  // With -include_clock_network a clock-network buffer is sizable, but it
+  // must stay a clock buffer: the resizer's own CLOCK/DATA classification
+  // (Resizer::getBufferUse -- is_clock_cell, the clock buffer string or
+  // footprint, else "CLKBUF" in the name) decides, exactly as
+  // repairClkNets restricts itself to clk_buffers_. Without this filter a
+  // CTS clock buffer is re-mastered into a DATA buffer of the same function
+  // (measured on gf180mcu: clkbuf_8 -> buf_1..buf_12 on 83 tree buffers).
+  const bool keep_clock_buffer
+      = cur_cell->isBuffer()
+        && resizer_->getBufferUse(cur_cell) == BufferUse::CLOCK;
   snap.candidates.reserve(candidates.size());
   for (sta::LibertyCell* cand : candidates) {
     if (cand == cur_cell) {
+      continue;
+    }
+    if (keep_clock_buffer && resizer_->getBufferUse(cand) != BufferUse::CLOCK) {
       continue;
     }
     Candidate c;
