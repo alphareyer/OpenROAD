@@ -247,6 +247,8 @@ or_integration_tests(
     global_sizing
     global_sizing_threads
     global_sizing_presize
+    global_sizing_clock_buffers
+    global_sizing_clock_buffers_presize
     repair_timing_crpr
     inferred_clock_gator_time_borrow
     inferred_clock_gator_time_borrow_covered

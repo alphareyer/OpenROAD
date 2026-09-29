@@ -259,6 +259,8 @@ TESTS = [
     "global_sizing",
     "global_sizing_threads",
     "global_sizing_presize",
+    "global_sizing_clock_buffers",
+    "global_sizing_clock_buffers_presize",
     "repair_timing_crpr",
     "inferred_clock_gator_time_borrow",
     "inferred_clock_gator_time_borrow_covered",
@@ -307,6 +309,7 @@ filegroup(
 
 # Tests that reference other tests
 extra_deps = {
+    "global_sizing_clock_buffers_presize": ["global_sizing_clock_buffers.tcl"],
     "global_sizing_threads": ["global_sizing.tcl"],
     "repair_fanout6_multi": ["repair_fanout6.tcl"],
     "repair_fanout7_multi": ["repair_fanout7.tcl"],

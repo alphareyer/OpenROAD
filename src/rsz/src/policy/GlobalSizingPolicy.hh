@@ -54,9 +54,12 @@ class GlobalSizingPolicy : public OptimizationPolicy
 
   // === Setup ================================================================
   // Pick the deterministic presize target within the swappable-equivalent set.
+  // keep_clock_buffer restricts the candidates to CLOCK buffers
+  // (Resizer::getBufferUse); the cache must be specific to that choice.
   sta::LibertyCell* selectPresizeCell(
       sta::LibertyCell* current_cell,
       GlobalSizingConfig::PresizeMode mode,
+      bool keep_clock_buffer,
       PresizeCellCache& presize_cell_cache) const;
   // Apply the selected presize to the live design before LR state is seeded.
   int applyPresize(GlobalSizingConfig::PresizeMode mode,

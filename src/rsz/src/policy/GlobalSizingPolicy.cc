@@ -59,6 +59,7 @@ GlobalSizingPolicy::~GlobalSizingPolicy() = default;
 sta::LibertyCell* GlobalSizingPolicy::selectPresizeCell(
     sta::LibertyCell* current_cell,
     const GlobalSizingConfig::PresizeMode mode,
+    const bool keep_clock_buffer,
     PresizeCellCache& presize_cell_cache) const
 {
   // Use the cache if this cell has been searched before
@@ -75,6 +76,10 @@ sta::LibertyCell* GlobalSizingPolicy::selectPresizeCell(
   // Lazily resolved on the first leakage tie; refreshed when best changes.
   std::optional<float> best_drive;
   for (sta::LibertyCell* candidate : candidates) {
+    if (keep_clock_buffer
+        && resizer_.getBufferUse(candidate) != BufferUse::CLOCK) {
+      continue;
+    }
     const std::optional<float> candidate_leak = resizer_.cellLeakage(candidate);
     if (!candidate_leak.has_value()) {
       continue;
@@ -142,6 +147,7 @@ int GlobalSizingPolicy::applyPresize(const GlobalSizingConfig::PresizeMode mode,
   int editable_count = 0;
   int replacements = 0;
   PresizeCellCache presize_cell_cache;
+  PresizeCellCache presize_clock_buffer_cache;
   std::unique_ptr<sta::LeafInstanceIterator> iit(
       network_->leafInstanceIterator());
   while (iit->hasNext()) {
@@ -168,8 +174,27 @@ int GlobalSizingPolicy::applyPresize(const GlobalSizingConfig::PresizeMode mode,
     ++editable_count;
 
     sta::LibertyCell* current_cell = network_->libertyCell(inst);
-    sta::LibertyCell* replacement
-        = selectPresizeCell(current_cell, mode, presize_cell_cache);
+    // A buffer driving a clock net stays in the clock-buffer family, as in
+    // LRSubproblem::snapshot.
+    bool keep_clock_buffer = false;
+    if (current_cell->isBuffer()
+        && resizer_.getBufferUse(current_cell) == BufferUse::CLOCK) {
+      std::unique_ptr<sta::InstancePinIterator> pin_iter(
+          network_->pinIterator(inst));
+      while (pin_iter->hasNext()) {
+        sta::Pin* pin = pin_iter->next();
+        if (network_->direction(pin)->isOutput()
+            && sta_->isClock(pin, sta_->cmdMode())) {
+          keep_clock_buffer = true;
+          break;
+        }
+      }
+    }
+    sta::LibertyCell* replacement = selectPresizeCell(
+        current_cell,
+        mode,
+        keep_clock_buffer,
+        keep_clock_buffer ? presize_clock_buffer_cache : presize_cell_cache);
     if (replacement != current_cell
         && resizer_.replaceCell(inst, replacement)) {
       ++replacements;

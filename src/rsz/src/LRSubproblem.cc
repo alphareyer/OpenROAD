@@ -225,13 +225,19 @@ bool LRSubproblem::snapshot(sta::Instance* inst,
   // graph.
   float worst_budget = std::numeric_limits<float>::max();
 
+  // Set when an output pin of inst is in the clock network (only reachable
+  // with include_clock_network; otherwise such a gate is skipped).
+  bool drives_clock_net = false;
   std::unique_ptr<sta::InstancePinIterator> pit(network_->pinIterator(inst));
   while (pit->hasNext()) {
     sta::Pin* pin = pit->next();
     const sta::PortDirection* dir = network_->direction(pin);
     if (dir->isOutput()) {
-      if (!include_clock_network && sta_->isClock(pin, sta_->cmdMode())) {
-        return false;
+      if (sta_->isClock(pin, sta_->cmdMode())) {
+        if (!include_clock_network) {
+          return false;
+        }
+        drives_clock_net = true;
       }
       sta::Vertex* v = graph_->pinDrvrVertex(pin);
       if (v == nullptr) {
@@ -403,9 +409,23 @@ bool LRSubproblem::snapshot(sta::Instance* inst,
   // lazy caches and must not be touched from workers.
   snap.cur_leakage = leakageOrArea(cur_cell);
   sta::LibertyCellSeq candidates = resizer_->getSwappableCells(cur_cell);
+  // With -include_clock_network a clock-network buffer is sizable, but it
+  // must stay a clock buffer: the resizer's own CLOCK/DATA classification
+  // (Resizer::getBufferUse -- is_clock_cell, the clock buffer string or
+  // footprint, else "CLKBUF" in the name) decides, exactly as
+  // repairClkNets restricts itself to clk_buffers_. Without this filter a
+  // CTS clock buffer is re-mastered into a DATA buffer of the same function.
+  // The restriction applies only to a gate that drives a clock net: a
+  // clock-buffer master placed on a data path keeps its full candidate set.
+  const bool keep_clock_buffer
+      = drives_clock_net && cur_cell->isBuffer()
+        && resizer_->getBufferUse(cur_cell) == BufferUse::CLOCK;
   snap.candidates.reserve(candidates.size());
   for (sta::LibertyCell* cand : candidates) {
     if (cand == cur_cell) {
+      continue;
+    }
+    if (keep_clock_buffer && resizer_->getBufferUse(cand) != BufferUse::CLOCK) {
       continue;
     }
     Candidate c;
