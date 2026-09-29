@@ -25,6 +25,7 @@
 #include "odb/dbTransform.h"
 #include "odb/geom.h"
 #include "odb/geom_boost.h"
+#include "psm/em_signoff.h"
 #include "shape.h"
 #include "utl/Logger.h"
 #include "utl/timer.h"
@@ -94,6 +95,8 @@ void IRNetwork::reset()
 
   iterm_nodes_.clear();
   bpin_nodes_.clear();
+  drawn_rects_.clear();
+  drawn_index_.clear();
 
   recoverMemory();
 }
@@ -166,7 +169,7 @@ void IRNetwork::recoverMemory()
 
 IRNetwork::LayerMap<odb::geom::BoostPolygon90Set>
 IRNetwork::generatePolygonsFromBox(odb::dbBox* box,
-                                   const odb::dbTransform& transform) const
+                                   const odb::dbTransform& transform)
 {
   LayerMap<odb::geom::BoostPolygon90Set> shapes_by_layer;
 
@@ -187,6 +190,7 @@ IRNetwork::generatePolygonsFromBox(odb::dbBox* box,
         transform.apply(rect);
 
         shapes.insert(odb::geom::toPolygon90(rect));
+        drawn_rects_[layer].push_back(rect);
       }
     }
   } else {
@@ -198,6 +202,7 @@ IRNetwork::generatePolygonsFromBox(odb::dbBox* box,
       odb::Rect rect = box->getBox();
       transform.apply(rect);
       shapes_by_layer[layer].insert(odb::geom::toPolygon90(rect));
+      drawn_rects_[layer].push_back(rect);
     }
   }
 
@@ -513,6 +518,8 @@ void IRNetwork::generateRoutingLayerShapesAndNodes()
     shapes_by_layer[layer].insert(shapes);
   }
 
+  indexDrawnRects();
+
   const TerminalTree terminal_nodes = getTerminalTree(terminals);
 
   // Simplify shapes
@@ -624,11 +631,13 @@ void IRNetwork::generateCutNodesForSBox(
     auto top_node = std::make_unique<Node>(via_center, top);
 
     int cuts = 0;
+    double cut_area = 0.0;
     for (const auto& shape : via_shapes) {
       cuts += getEffectiveNumberOfCuts(shape);
+      cut_area += static_cast<double>(shape.getBox().area());
     }
     new_connections.push_back(std::make_unique<ViaConnection>(
-        bottom_node.get(), top_node.get(), cuts));
+        bottom_node.get(), top_node.get(), cuts, cut_area));
 
     new_nodes.push_back(std::move(top_node));
     new_nodes.push_back(std::move(bottom_node));
@@ -639,8 +648,11 @@ void IRNetwork::generateCutNodesForSBox(
       auto bottom_node = std::make_unique<Node>(via.center(), bottom);
       auto top_node = std::make_unique<Node>(via.center(), top);
 
-      new_connections.push_back(std::make_unique<ViaConnection>(
-          bottom_node.get(), top_node.get(), getEffectiveNumberOfCuts(shape)));
+      new_connections.push_back(
+          std::make_unique<ViaConnection>(bottom_node.get(),
+                                          top_node.get(),
+                                          getEffectiveNumberOfCuts(shape),
+                                          static_cast<double>(via.area())));
 
       new_nodes.push_back(std::move(top_node));
       new_nodes.push_back(std::move(bottom_node));
@@ -863,6 +875,40 @@ void IRNetwork::sortConnections()
   std::ranges::stable_sort(connections_, [](const auto& lhs, const auto& rhs) {
     return lhs->compare(rhs);
   });
+}
+
+void IRNetwork::indexDrawnRects()
+{
+  const utl::DebugScopedTimer timer(
+      logger_, utl::PSM, "timer", 1, "Index drawn shapes: {}");
+
+  for (const auto& [layer, rects] : drawn_rects_) {
+    drawn_index_[layer] = DrawnRectTree(rects.begin(), rects.end());
+  }
+}
+
+int IRNetwork::getDrawnWidth(odb::dbTechLayer* layer,
+                             const odb::Point& p0,
+                             const odb::Point& p1) const
+{
+  const auto it = drawn_index_.find(layer);
+  if (it == drawn_index_.end()) {
+    return 0;
+  }
+  // The solver slices the union of every drawn shape on a layer into maximal
+  // rectangles; a node pair inside a via enclosure that overhangs a wire can
+  // land in a thin slice of that decomposition, whose extent is not any drawn
+  // metal.  The EM cross-section is taken from the drawn shapes instead.
+  const DrawnRectTree& index = it->second;
+  const odb::Rect span(p0, p1);
+  std::vector<EMDrawnRect> crossed;
+  for (auto itr = index.qbegin(boost::geometry::index::intersects(span));
+       itr != index.qend();
+       itr++) {
+    crossed.push_back({itr->xMin(), itr->yMin(), itr->xMax(), itr->yMax()});
+  }
+  return emDrawnWidthAcross(
+      crossed, p0.getX(), p0.getY(), p1.getX(), p1.getY());
 }
 
 int IRNetwork::getEffectiveNumberOfCuts(const odb::dbShape& shape) const
@@ -1217,6 +1263,12 @@ void IRNetwork::reportStats() const
   }
   logger_->report("Total nodes: {}", count);
   logger_->report("Total connections: {}", connections_.size());
+  count = 0;
+  for (const auto& [layer, index] : drawn_index_) {
+    count += index.size();
+    logger_->report("Drawn rects on {}: {}", layer->getName(), index.size());
+  }
+  logger_->report("Total drawn rects: {}", count);
 }
 
 void IRNetwork::copy(Node* keep,

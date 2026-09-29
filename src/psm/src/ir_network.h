@@ -101,6 +101,14 @@ class IRNetwork
 
   std::size_t getNodeCount(bool include_iterms = false) const;
 
+  // Width [DBU] of the drawn metal on `layer` that carries the segment p0-p1,
+  // measured across the segment's direction: the narrowest position along
+  // the segment, each position as wide as the widest drawn rectangle covering
+  // it (emDrawnWidthAcross).  0 when part of the segment has no drawn metal.
+  int getDrawnWidth(odb::dbTechLayer* layer,
+                    const odb::Point& p0,
+                    const odb::Point& p1) const;
+
   void clearVisitedNodes();
 
   const Connections& getConnections() const { return connections_; }
@@ -170,7 +178,8 @@ class IRNetwork
                                Connections& new_connections);
   LayerMap<odb::geom::BoostPolygon90Set> generatePolygonsFromBox(
       odb::dbBox* box,
-      const odb::dbTransform& transform) const;
+      const odb::dbTransform& transform);
+  void indexDrawnRects();
 
   TerminalTree getTerminalTree(
       const std::vector<TerminalNode*>& terminals) const;
@@ -190,6 +199,17 @@ class IRNetwork
 
   LayerMap<std::vector<std::unique_ptr<Shape>>> shapes_;
   LayerMap<std::vector<std::unique_ptr<Node>>> nodes_;
+
+  // Every drawn routing-layer rectangle of the net (wires, via enclosures,
+  // pins), as drawn -- before the per-layer union is sliced into the solver's
+  // shapes.  EM current density judges a wire on this geometry.
+  LayerMap<std::vector<odb::Rect>> drawn_rects_;
+  // drawn_rects_ indexed once per layer when the network is constructed, so a
+  // drawn-width lookup visits only the rectangles near its segment.
+  using DrawnRectTree
+      = boost::geometry::index::rtree<odb::Rect,
+                                      boost::geometry::index::quadratic<16>>;
+  LayerMap<DrawnRectTree> drawn_index_;
 
   Connections connections_;
 

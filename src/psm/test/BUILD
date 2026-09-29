@@ -34,6 +34,12 @@ COMPULSORY_TESTS = [
     "gcd_all_vss",
     "gcd_em_test_vdd",
     "gcd_em_density_vdd",
+    "gcd_em_via_per_cut",
+    "gcd_em_no_silent_skip",
+    "em_pad_ring_abutment",
+    "gcd_em_drawn_width",
+    "gcd_em_rebuild_drawn_rects",
+    "em_lef_default_limits",
     "gcd_signal_em",
     "gcd_gt2n_backside",
     "gcd_gt2n_backside_wo_pins",
@@ -151,6 +157,7 @@ filegroup(
         "gt2n_gcd_data/gcd.sdc",
         "gt2n_gcd_data/gcd_pins.def",
         "helpers.tcl",
+        "em_signoff_helpers.tcl",
         "ihp-sg13g2_data/IOLib.lef",
         "ihp-sg13g2_data/IOLib_dummy.lib",
         "ihp-sg13g2_data/setRC.tcl",
@@ -187,6 +194,11 @@ filegroup(
     ],
 )
 
+# Data a test reads from another test's files.
+EXTRA_TEST_DATA = {
+    "em_pad_ring_abutment": ["pad_connected_by_abutment.def"],
+}
+
 [
     filegroup(
         name = test_name + "_resources",
@@ -194,7 +206,7 @@ filegroup(
             [
                 test_name + ".*",
             ],
-        ),
+        ) + EXTRA_TEST_DATA.get(test_name, []),
     )
     for test_name in ALL_TESTS
 ]

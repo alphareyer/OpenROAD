@@ -22,7 +22,6 @@
 
 #include "boost/geometry/geometry.hpp"
 #include "connection.h"
-#include "transient.h"
 #include "db_sta/dbNetwork.hh"
 #include "debug_gui.h"
 #include "est/EstimateParasitics.h"
@@ -42,6 +41,7 @@
 #include "sta/NetworkClass.hh"
 #include "sta/PowerClass.hh"
 #include "sta/Sdc.hh"
+#include "transient.h"
 #include "utl/Logger.h"
 #include "utl/timer.h"
 
@@ -1821,7 +1821,8 @@ double IRSolver::buildTransientCapacitance(
         }
       }
     } else if (!real_node_index.empty()) {
-      const double per = aggregate / static_cast<double>(real_node_index.size());
+      const double per
+          = aggregate / static_cast<double>(real_node_index.size());
       for (const auto& [node, idx] : real_node_index) {
         cap_diag[idx] += per;
       }
@@ -2064,9 +2065,9 @@ void IRSolver::solveTransient(sta::Scene* corner,
     sinks.push_back({idx, cit->second, center, sink_duty, scale});
   }
 
-  // Renormalize the vectored activity weights so the current-weighted mean scale
-  // is 1: vectoring redistributes WHERE current peaks in time, it must not
-  // inflate or deflate the total average current (charge conservation).
+  // Renormalize the vectored activity weights so the current-weighted mean
+  // scale is 1: vectoring redistributes WHERE current peaks in time, it must
+  // not inflate or deflate the total average current (charge conservation).
   if (use_vectored && settings.normalize_vectored) {
     double num = 0.0;
     double den = 0.0;
@@ -2093,7 +2094,8 @@ void IRSolver::solveTransient(sta::Scene* corner,
   // exact (the source branch current identically equals the total sink current)
   // and is validated against the matrix-inductor companion model by the
   // PackageAggregateMatchesMatrixInductor gtest.
-  const bool use_package = (settings.package_r > 0.0 || settings.package_l > 0.0);
+  const bool use_package
+      = (settings.package_r > 0.0 || settings.package_l > 0.0);
   auto total_current = [&](double t) -> double {
     const double phase = t / settings.period;
     double sum = 0.0;
@@ -2120,7 +2122,8 @@ void IRSolver::solveTransient(sta::Scene* corner,
       const double i_now = total_current(t);
       const double i_prev = total_current(t - dt);
       const double didt = (i_now - i_prev) / dt;
-      const double droop = settings.package_r * i_now + settings.package_l * didt;
+      const double droop
+          = settings.package_r * i_now + settings.package_l * didt;
       // Supply rail droops (v decreases); ground rail bounces up.
       for (const std::size_t sidx : source_indices) {
         rhs[sidx] = is_ground ? (src_voltage + droop) : (src_voltage - droop);
@@ -2535,23 +2538,43 @@ EMSignoffResult IRSolver::checkCurrentDensity(
   }
 
   // Build the per-segment (current, cross-section) list from the solved current
-  // map + this design's LEF geometry, then hand the pure J = I/A rule engine the
-  // job of classifying against the per-layer limits.
+  // map + this design's LEF geometry, then hand the pure J = I/A rule engine
+  // the job of classifying against the per-layer limits.
   const double dbu = getBlock()->getDbUnitsPerMicron();
   const double dbu2 = dbu * dbu;
 
   std::vector<EMWireCurrent> wires;
   for (const auto& [connection, current] : generateCurrentMap(corner)) {
-    const double area_dbu2 = connection->getCrossSectionAreaDBU2();
-
     EMWireCurrent wire;
     wire.current_a = current;
-    wire.area_um2 = area_dbu2 / dbu2;  // <= 0 => engine skips (no geometry)
     wire.is_via = connection->isVia();
 
     const Node* node0 = connection->getNode0();
     const Node* node1 = connection->getNode1();
-    if (node0 != nullptr && node0->getLayer() != nullptr) {
+    double area_dbu2 = 0.0;
+    if (const auto* via = dynamic_cast<const ViaConnection*>(connection)) {
+      // A via is judged on its own cut layer, per cut.
+      wire.cuts = via->getCuts();
+      area_dbu2 = via->getCrossSectionAreaDBU2();
+    } else if (node0 != nullptr && node1 != nullptr
+               && node0->getLayer() != nullptr) {
+      // A wire is judged on the drawn metal that carries it.
+      uint32_t thickness = 0;
+      if (node0->getLayer()->getThickness(thickness) && thickness > 0) {
+        const int width = network_->getDrawnWidth(
+            node0->getLayer(), node0->getPoint(), node1->getPoint());
+        area_dbu2 = static_cast<double>(width) * thickness;
+      }
+    }
+    wire.area_um2 = area_dbu2 / dbu2;  // <= 0 => NO_AREA (counted, listed)
+
+    if (const auto* via = dynamic_cast<const ViaConnection*>(connection);
+        via != nullptr && via->getCutLayer() != nullptr) {
+      wire.layer = via->getCutLayer()->getName();
+      const odb::Point& p0 = node0->getPoint();
+      wire.x0 = p0.getX() / dbu;
+      wire.y0 = p0.getY() / dbu;
+    } else if (node0 != nullptr && node0->getLayer() != nullptr) {
       wire.layer = node0->getLayer()->getName();
       const odb::Point& p0 = node0->getPoint();
       wire.x0 = p0.getX() / dbu;
@@ -2570,16 +2593,19 @@ EMSignoffResult IRSolver::checkCurrentDensity(
   if (!report_file.empty()) {
     std::ofstream report(report_file);
     if (!report) {
-      logger_->error(
-          utl::PSM, 113, "Unable to open {} to write EM signoff report",
-          report_file);
+      logger_->error(utl::PSM,
+                     113,
+                     "Unable to open {} to write EM signoff report",
+                     report_file);
     }
+    // J/Jlimit are A/um^2 for an AREAL row and A per cut for a PER_CUT row.
     report << "Layer,Node0 X,Node0 Y,Node1 X,Node1 Y,Current(A),Area(um^2),"
-              "J(A/um^2),Jlimit(A/um^2),Ratio,Status\n";
+              "J(A/um^2),Jlimit(A/um^2),Ratio,Status,Cuts,Basis\n";
     for (const auto& w : results.wires) {
-      const char* status = w.limit <= 0.0 ? "NO_LIMIT"
-                           : w.violated   ? "VIOLATED"
-                                          : "OK";
+      const char* status = w.basis == "NO_AREA" ? "NO_AREA"
+                           : w.limit <= 0.0     ? "NO_LIMIT"
+                           : w.violated         ? "VIOLATED"
+                                                : "OK";
       report << w.layer << "," << fmt::format("{:.4f}", w.x0) << ","
              << fmt::format("{:.4f}", w.y0) << ","
              << fmt::format("{:.4f}", w.x1) << ","
@@ -2588,7 +2614,8 @@ EMSignoffResult IRSolver::checkCurrentDensity(
              << fmt::format("{:.4e}", w.area_um2) << ","
              << fmt::format("{:.3e}", w.j) << ","
              << fmt::format("{:.3e}", w.limit) << ","
-             << fmt::format("{:.3f}", w.ratio) << "," << status << '\n';
+             << fmt::format("{:.3f}", w.ratio) << "," << status << "," << w.cuts
+             << "," << w.basis << '\n';
     }
   }
 
@@ -2597,26 +2624,40 @@ EMSignoffResult IRSolver::checkCurrentDensity(
   logger_->report("Corner             : {}", corner->name());
   logger_->report("Segments checked   : {}", results.checked);
   logger_->report("With J-limit       : {}", results.limited);
+  logger_->report("Vias judged per cut: {}", results.per_cut);
   logger_->report("No J-limit (skipped): {}", results.skipped_no_limit);
-  logger_->report("Worst J            : {:3.3e} A/um^2 (layer {})",
+  for (const auto& [layer, count] : results.no_limit_by_layer) {
+    logger_->report("  NO_LIMIT {:<12}: {}", layer, count);
+  }
+  logger_->report("No area (skipped)  : {}", results.skipped_no_area);
+  for (const auto& [layer, count] : results.no_area_by_layer) {
+    logger_->report("  NO_AREA  {:<12}: {}", layer, count);
+  }
+  // A via judged per cut carries current per cut, not current density.
+  const char* worst_unit
+      = results.worst_basis == "PER_CUT" ? "A/cut" : "A/um^2";
+  logger_->report("Worst J            : {:3.3e} {} (layer {})",
                   results.worst_j,
+                  worst_unit,
                   results.worst_layer.empty() ? "-" : results.worst_layer);
-  logger_->report("Worst J-limit      : {:3.3e} A/um^2", results.worst_limit);
-  logger_->report("Worst utilization  : {:3.2f} %", 100.0 * results.worst_ratio);
+  logger_->report(
+      "Worst J-limit      : {:3.3e} {}", results.worst_limit, worst_unit);
+  logger_->report("Worst utilization  : {:3.2f} %",
+                  100.0 * results.worst_ratio);
   logger_->report("Violations         : {}", results.violations);
-  logger_->report("Verdict            : {}",
-                  results.pass() ? "PASS" : "FAIL");
+  logger_->report("Verdict            : {}", results.verdict());
   logger_->report("###############################################");
 
   if (results.violations > 0) {
-    logger_->warn(utl::PSM,
-                  112,
-                  "EM current-density signoff FAILED for net {}: {} segment(s) "
-                  "exceed the per-layer J-limit (worst {:.1f}% of limit on {}).",
-                  net_->getName(),
-                  results.violations,
-                  100.0 * results.worst_ratio,
-                  results.worst_layer.empty() ? "-" : results.worst_layer);
+    logger_->warn(
+        utl::PSM,
+        112,
+        "EM current-density signoff FAILED for net {}: {} segment(s) "
+        "exceed the per-layer J-limit (worst {:.1f}% of limit on {}).",
+        net_->getName(),
+        results.violations,
+        100.0 * results.worst_ratio,
+        results.worst_layer.empty() ? "-" : results.worst_layer);
   }
 
   logger_->metric(getMetricKey("design_powergrid__em__violations", corner),
@@ -2681,9 +2722,8 @@ void IRSolver::reportTransient(sta::Scene* corner) const
                   r.worst_step);
   logger_->report("###################################################");
 
-  logger_->metric(
-      getMetricKey("design_powergrid__drop__worst_dynamic", corner),
-      r.worst_dynamic_ir_drop);
+  logger_->metric(getMetricKey("design_powergrid__drop__worst_dynamic", corner),
+                  r.worst_dynamic_ir_drop);
   logger_->metric(
       getMetricKey("design_powergrid__drop__dynamic_static_ratio", corner),
       r.dynamic_static_ratio);
