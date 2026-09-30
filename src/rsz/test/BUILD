@@ -271,6 +271,7 @@ TESTS = [
 
 # From CMakeLists.txt or_integration_tests(PASSFAIL_TESTS
 PASSFAIL_TESTS = [
+    "repair_hold_absolute_count",
     # NOTE: cpp_tests excluded - it's a CMake-specific wrapper script that expects
     # build directory structure not compatible with Bazel
     # "cpp_tests",

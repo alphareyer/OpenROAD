@@ -243,6 +243,7 @@ repair_timing
     [-max_repairs_per_pass max_repairs_per_pass]
     [-max_utilization util]
     [-max_buffer_percent buffer_percent]
+    [-max_buffer_count buffer_count]
     [-match_cell_footprint]
     [-verbose]
 ```
@@ -274,6 +275,7 @@ repair_timing
 | `-max_utilization` | Defines the percentage of core area used. |
 | `-max_iterations` | Defines the maximum number of iterations executed when repairing setup and hold violations. The default is `-1`, which disables the limit of iterations. |
 | `-max_buffer_percent` | Specify a maximum number of buffers to insert to repair hold violations as a percentage of the number of instances in the design. The default value is `20`, and the allowed values are integers `[0, 100]`. |
+| `-max_buffer_count` | Optional absolute hold buffer insertion ceiling for this invocation, from `0` to `2147483647`; requires `-hold`. Zero prevents hold buffer insertion. It clamps the existing percentage budget (including its minimum of 100), and does not grow with setup repair. Omitting it preserves legacy behavior. Exhausting the ceiling can leave hold violations; area and setup restrictions still apply. |
 | `-match_cell_footprint` | Obey the Liberty cell footprint when swapping gates. |
 | `-verbose` | Enable verbose logging of the repair progress. |
 

@@ -256,6 +256,7 @@ or_integration_tests(
     inferred_clock_gator_time_borrow_tns
     latch_borrow_chain
   PASSFAIL_TESTS
+    repair_hold_absolute_count
     repair_setup_legacy_mt
     repair_setup_mt1
     cpp_tests
