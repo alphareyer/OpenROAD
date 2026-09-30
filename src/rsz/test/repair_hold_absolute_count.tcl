@@ -3,7 +3,7 @@
 source helpers.tcl
 
 if { ![info exists ::env(VIBEIC_HOLD_COUNT_TEST_CASE)] } {
-  foreach case {0 1 2 10 omitted invalid} {
+  foreach case {0 1 2 10 2147483647 omitted reset per_pin invalid} {
     set ::env(VIBEIC_HOLD_COUNT_TEST_CASE) $case
     if { [catch {exec [info nameofexecutable] -no_splash -no_init -exit \
                      [file normalize [info script]]} output] } {
@@ -28,7 +28,20 @@ estimate_parasitics -placement
 set block [ord::get_db_block]
 set before [llength [$block getInsts]]
 set case $::env(VIBEIC_HOLD_COUNT_TEST_CASE)
-if { $case == "invalid" } {
+if { $case in {reset per_pin} } {
+  repair_timing -hold -max_buffer_count 0
+  if { [llength [$block getInsts]] != $before } {
+    error "zero ceiling changed the instance population"
+  }
+  if { $case == "reset" } {
+    repair_timing -hold -allow_setup_violations
+  } else {
+    rsz::repair_hold_pin [get_pins r3/D] 0.0 0.0 1 1.0 100
+  }
+  if { [llength [$block getInsts]] <= $before } {
+    error "absolute mode leaked into subsequent legacy $case repair"
+  }
+} elseif { $case == "invalid" } {
   foreach count {-1 2147483648 1.5 nonsense} {
     if { ![catch {repair_timing -hold -max_buffer_count $count} message] } {
       error "accepted invalid absolute count $count"
