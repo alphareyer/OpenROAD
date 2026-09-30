@@ -258,6 +258,7 @@ sta::define_cmd_args "repair_timing" {[-setup] [-hold]\
                                         [-max_passes passes]\
                                         [-max_iterations iterations]\
                                         [-max_buffer_percent buffer_percent]\
+                                        [-max_buffer_count buffer_count]\
                                         [-max_utilization util] \
                                         [-match_cell_footprint] \
                                         [-max_repairs_per_pass max_repairs_per_pass]\
@@ -269,7 +270,7 @@ proc repair_timing { args } {
   # same phase sequence; only one of the three may be supplied per call.
   sta::parse_key_args "repair_timing" args \
     keys {-setup_margin -hold_margin -slack_margin \
-            -libraries -max_utilization -max_buffer_percent -sequence \
+            -libraries -max_utilization -max_buffer_percent -max_buffer_count -sequence \
             -phases -policy -policies \
             -recover_power -repair_tns -max_passes -max_iterations -max_repairs_per_pass} \
     flags {-setup -hold -allow_setup_violations -skip_pin_swap -skip_gate_cloning \
@@ -339,6 +340,14 @@ proc repair_timing { args } {
     sta::check_percent "-max_buffer_percent" $max_buffer_percent
   }
   set max_buffer_percent [expr $max_buffer_percent / 100.0]
+  set absolute_max_buffer_count -1
+  if { [info exists keys(-max_buffer_count)] } {
+    set absolute_max_buffer_count $keys(-max_buffer_count)
+    if { !$hold || ![string is integer -strict $absolute_max_buffer_count]
+         || $absolute_max_buffer_count < 0 || $absolute_max_buffer_count > 2147483647 } {
+      error "-max_buffer_count requires -hold and a non-negative int32"
+    }
+  }
 
   set repair_tns_end_percent 1.0
   if { [info exists keys(-repair_tns)] } {
@@ -415,7 +424,7 @@ proc repair_timing { args } {
         }
         set repaired_hold [rsz::repair_hold $setup_margin $hold_margin \
           $allow_setup_violations $max_buffer_percent $max_passes \
-          $max_iterations $match_cell_footprint $verbose]
+          $max_iterations $match_cell_footprint $verbose $absolute_max_buffer_count]
       }
     } finally {
       if { [sta::crpr_enabled] != $entry_crpr_enabled } {
