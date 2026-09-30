@@ -408,7 +408,10 @@ bool LRSubproblem::snapshot(sta::Instance* inst,
   // candidate now, on the main thread - leakageOrArea/getSwappableCells mutate
   // lazy caches and must not be touched from workers.
   snap.cur_leakage = leakageOrArea(cur_cell);
-  sta::LibertyCellSeq candidates = resizer_->getSwappableCells(cur_cell);
+  // A fixed instance keeps its footprint, so it only takes a VT swap.
+  sta::LibertyCellSeq candidates = resizer_->isFixed(inst)
+                                       ? resizer_->getVTEquivCells(cur_cell)
+                                       : resizer_->getSwappableCells(cur_cell);
   // With -include_clock_network a clock-network buffer is sizable, but it
   // must stay a clock buffer: the resizer's own CLOCK/DATA classification
   // (Resizer::getBufferUse -- is_clock_cell, the clock buffer string or
