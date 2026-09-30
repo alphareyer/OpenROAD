@@ -5419,7 +5419,8 @@ bool Resizer::repairHold(
     int max_passes,
     int max_iterations,
     bool match_cell_footprint,
-    bool verbose)
+    bool verbose,
+    int absolute_max_buffer_count)
 {
   utl::Timer timer;
   utl::SetAndRestore set_match_footprint(match_cell_footprint_,
@@ -5446,7 +5447,8 @@ bool Resizer::repairHold(
                                          max_buffer_percent,
                                          max_passes,
                                          max_iterations,
-                                         verbose);
+                                         verbose,
+                                         absolute_max_buffer_count);
   logger_->info(RSZ, 506, "Runtime: {:.2f}s", timer.elapsed());
   return result;
 }

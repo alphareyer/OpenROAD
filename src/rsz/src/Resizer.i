@@ -404,6 +404,12 @@ report_swappable_pins_cmd()
   resizer->reportSwappablePins();
 }
 
+int
+hold_buffer_count_limit_abi()
+{
+  return 1;
+}
+
 bool
 repair_hold(double setup_margin,
             double hold_margin,
@@ -412,7 +418,8 @@ repair_hold(double setup_margin,
             int max_passes,
             int max_iterations,
             bool match_cell_footprint,
-            bool verbose)
+            bool verbose,
+            int absolute_max_buffer_count = -1)
 {
   ensureLinked();
   Resizer *resizer = getResizer();
@@ -420,7 +427,7 @@ repair_hold(double setup_margin,
                       allow_setup_violations,
                       max_buffer_percent, max_passes,
                       max_iterations, match_cell_footprint,
-                      verbose);
+                      verbose, absolute_max_buffer_count);
 }
 
 void

@@ -379,7 +379,8 @@ class Resizer : public sta::dbStaState, public sta::dbNetworkObserver
                   int max_passes,
                   int max_iterations,
                   bool match_cell_footprint,
-                  bool verbose);
+                  bool verbose,
+                  int absolute_max_buffer_count = -1);
   void repairHold(const sta::Pin* end_pin,
                   double setup_margin,
                   double hold_margin,

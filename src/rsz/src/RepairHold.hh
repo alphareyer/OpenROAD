@@ -38,7 +38,8 @@ class RepairHold : public sta::dbStaState
                   float max_buffer_percent,
                   int max_passes,
                   int max_iterations,
-                  bool verbose);
+                  bool verbose,
+                  int absolute_max_buffer_count = -1);
   void repairHold(const sta::Pin* end_pin,
                   double setup_margin,
                   double hold_margin,
@@ -113,6 +114,8 @@ class RepairHold : public sta::dbStaState
   Resizer* resizer_;
   est::EstimateParasitics* estimate_parasitics_;
 
+  bool absolute_count_limit_ = false;
+  int absolute_max_buffer_count_ = 0;
   int resize_count_ = 0;
   int inserted_buffer_count_ = 0;
   int cloned_gate_count_ = 0;

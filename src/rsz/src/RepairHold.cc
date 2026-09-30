@@ -58,6 +58,8 @@ void RepairHold::init()
   db_network_ = resizer_->db_network_;
   estimate_parasitics_ = resizer_->estimate_parasitics_;
   initial_design_area_ = resizer_->computeDesignArea();
+  absolute_count_limit_ = false;
+  absolute_max_buffer_count_ = 0;
 }
 
 bool RepairHold::repairHold(
@@ -68,7 +70,8 @@ bool RepairHold::repairHold(
     const float max_buffer_percent,
     const int max_passes,
     const int max_iterations,
-    const bool verbose)
+    const bool verbose,
+    const int absolute_max_buffer_count)
 {
   bool repaired = false;
   init();
@@ -87,6 +90,20 @@ bool RepairHold::repairHold(
   int max_buffer_count = max_buffer_percent * network_->instanceCount();
   // Prevent it from being too small on trivial designs
   max_buffer_count = std::max(max_buffer_count, 100);
+  absolute_count_limit_ = absolute_max_buffer_count >= 0;
+  absolute_max_buffer_count_ = absolute_max_buffer_count;
+  if (absolute_count_limit_) {
+    // Absolute ceiling includes zero and never depends on setup instance growth.
+    max_buffer_count = std::min(max_buffer_count, absolute_max_buffer_count);
+  }
+  logger_->metric("vibeic__hold__count_limit__abi", 1);
+  logger_->metric("vibeic__hold__count_limit__absolute", absolute_count_limit_ ? 1 : 0);
+  logger_->metric("vibeic__hold__count_limit", absolute_max_buffer_count);
+  logger_->metric("vibeic__hold__count_limit__effective", max_buffer_count);
+
+  if (absolute_count_limit_) {
+    absolute_max_buffer_count_ = max_buffer_count;
+  }
 
   {
     est::IncrementalParasiticsGuard guard(estimate_parasitics_);
@@ -402,7 +419,9 @@ bool RepairHold::repairHold(sta::VertexSeq& ends,
     printProgress(0, true, false);
     int pass = 1;
     while (worst_slack < hold_margin && progress && !resizer_->overMaxArea()
-           && inserted_buffer_count_ <= max_buffer_count && pass <= max_passes
+           && (absolute_count_limit_ ? inserted_buffer_count_ < max_buffer_count
+                                     : inserted_buffer_count_ <= max_buffer_count)
+           && pass <= max_passes
            && (max_iterations < 0 || pass <= max_iterations)) {
       if (verbose || pass == 1) {
         printProgress(pass, false, false);
@@ -505,6 +524,9 @@ void RepairHold::repairHoldPass(sta::VertexSeq& hold_failures,
     return sta_->slack(end1, min_) < sta_->slack(end2, min_);
   });
   for (sta::Vertex* end_vertex : hold_failures) {
+    if (absolute_count_limit_ && inserted_buffer_count_ >= absolute_max_buffer_count_) {
+      break;
+    }
     if (verbose) {
       printProgress(pass, false, false);
     }
@@ -563,6 +585,9 @@ void RepairHold::repairEndHold(sta::Vertex* end_vertex,
       }
       // Stop one short of the end so we can get the load.
       for (int i = 0; i < path_vertices.size() - 1; i++) {
+        if (absolute_count_limit_ && inserted_buffer_count_ >= absolute_max_buffer_count_) {
+          return;
+        }
         sta::Vertex* path_vertex = path_vertices[i];
         sta::Pin* path_pin = path_vertex->pin();
 
@@ -673,7 +698,9 @@ void RepairHold::repairEndHold(sta::Vertex* end_vertex,
               float slew_factor
                   = (slew_before > 0) ? slew_after / slew_before : 1.0;
 
-              if (slew_factor > 1.20
+              if ((absolute_count_limit_
+                   && move.buffers > absolute_max_buffer_count_ - inserted_buffer_count_)
+                  || slew_factor > 1.20
                   || (!allow_setup_violations
                       && sta::fuzzyLess(setup_slack_after, setup_slack_before)
                       && setup_slack_after < setup_margin)) {
