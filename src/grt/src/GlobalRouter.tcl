@@ -399,7 +399,7 @@ proc repair_antennas { args } {
       # routing -- for a global-route-only source the C++ loop already reroutes
       # (IncrementalGRoute), so -reroute does not apply there.
       if { ![grt::have_detailed_routes] } {
-        utl::error GRT 312 "repair_antennas -reroute requires detailed\
+        utl::error GRT 328 "repair_antennas -reroute requires detailed\
           routing; run detailed_route first."
       }
       set reroute_cap 10
