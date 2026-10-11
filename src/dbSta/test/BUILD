@@ -108,6 +108,7 @@ ALL_TESTS = [
 ]
 
 PASSFAIL_TESTS = [
+    "cell_slew_scope",
     "check_ip_liberty_pins",
 ]
 

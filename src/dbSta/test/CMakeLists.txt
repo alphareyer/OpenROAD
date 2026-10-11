@@ -78,6 +78,7 @@ or_integration_tests(
     write_verilog9
     write_verilog9_hier
   PASSFAIL_TESTS
+    cell_slew_scope
     check_ip_liberty_pins
 )
 
