@@ -1,0 +1,70 @@
+library(scope_fixture) {
+  delay_model : table_lookup;
+  time_unit : "1ns";
+  voltage_unit : "1V";
+  current_unit : "1mA";
+  pulling_resistance_unit : "1kohm";
+  leakage_power_unit : "1nW";
+  capacitive_load_unit(1,pf);
+  default_fanout_load : 1;
+  nom_process : 1;
+  nom_voltage : 1;
+  nom_temperature : 25;
+  lu_table_template(edge) {
+    variable_1 : input_net_transition;
+    variable_2 : total_output_net_capacitance;
+    index_1("0.01,1");
+    index_2("0.01,1");
+  }
+  cell(CORE_BUF) {
+    area : 1;
+    pin(A) { direction : input; capacitance : 0.01; }
+    pin(Y) {
+      direction : output;
+      function : "A";
+      max_transition : 2;
+      timing() {
+        related_pin : "A";
+        timing_sense : positive_unate;
+        cell_rise(edge) { values("0.1,0.1","0.1,0.1"); }
+        cell_fall(edge) { values("0.1,0.1","0.1,0.1"); }
+        rise_transition(edge) { values("0.5,0.5","0.5,0.5"); }
+        fall_transition(edge) { values("0.5,0.5","0.5,0.5"); }
+      }
+    }
+  }
+  cell(IO_BUF) {
+    area : 1;
+    pin(A) { direction : input; capacitance : 0.01; }
+    pin(Y) {
+      direction : output;
+      function : "A";
+      max_transition : 25;
+      timing() {
+        related_pin : "A";
+        timing_sense : positive_unate;
+        cell_rise(edge) { values("0.1,0.1","0.1,0.1"); }
+        cell_fall(edge) { values("0.1,0.1","0.1,0.1"); }
+        rise_transition(edge) { values("2,2","2,2"); }
+        fall_transition(edge) { values("2,2","2,2"); }
+      }
+    }
+  }
+  cell(NATIVE_BUF) {
+    area : 1;
+    pin(A) { direction : input; capacitance : 0.01; }
+    pin(Y) {
+      direction : output;
+      function : "A";
+      max_transition : 0.25;
+      timing() {
+        related_pin : "A";
+        timing_sense : positive_unate;
+        cell_rise(edge) { values("0.1,0.1","0.1,0.1"); }
+        cell_fall(edge) { values("0.1,0.1","0.1,0.1"); }
+        rise_transition(edge) { values("0.5,0.5","0.5,0.5"); }
+        fall_transition(edge) { values("0.5,0.5","0.5,0.5"); }
+      }
+    }
+  }
+}
