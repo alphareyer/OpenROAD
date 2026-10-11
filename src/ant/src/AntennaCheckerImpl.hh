@@ -95,6 +95,8 @@ class AntennaChecker::Impl
   int checkAntennas(odb::dbNet* net, int num_threads, bool verbose);
   int antennaViolationCount() const;
   std::vector<odb::dbNet*> violatingNets();
+  int pinViolationCount() const;
+  NetCheck checkNet(odb::dbNet* net, float ratio_margin);
   Violations getAntennaViolations(odb::dbNet* net,
                                   odb::dbMTerm* diode_mterm,
                                   float ratio_margin);
@@ -106,9 +108,6 @@ class AntennaChecker::Impl
   bool haveRoutedNets();
   bool designIsPlaced();
   bool haveGuides();
-  double getPwlFactor(odb::dbTechLayerAntennaRule::pwl_pair pwl_info,
-                      double ref_val,
-                      double def);
   double diffArea(odb::dbMTerm* mterm);
   double gateArea(odb::dbMTerm* mterm);
   std::vector<std::pair<double, std::vector<odb::dbITerm*>>> parMaxWireLength(
@@ -124,12 +123,12 @@ class AntennaChecker::Impl
   // so a repair pass adding another one cannot help.
   void reportInertDiodes();
   void buildLayerMaps(odb::dbNet* net, LayerToGraphNodes& node_by_layer_map);
-  int checkNet(odb::dbNet* net,
-               bool verbose,
-               bool save_report,
-               odb::dbMTerm* diode_mterm,
-               float ratio_margin,
-               Violations& antenna_violations);
+  int analyzeNet(odb::dbNet* net,
+                 bool save_report,
+                 odb::dbMTerm* diode_mterm,
+                 float ratio_margin,
+                 Violations& antenna_violations,
+                 NetCheck& net_check);
   void saveGates(odb::dbNet* db_net,
                  LayerToGraphNodes& node_by_layer_map,
                  int node_count);
@@ -137,56 +136,37 @@ class AntennaChecker::Impl
                       GateToLayerToNodeInfo& gate_info);
   void calculatePAR(GateToLayerToNodeInfo& gate_info);
   void calculateCAR(GateToLayerToNodeInfo& gate_info);
-  bool checkRatioViolations(odb::dbNet* db_net,
-                            odb::dbTechLayer* layer,
-                            NodeInfo& node_info,
-                            float ratio_margin,
-                            bool verbose,
-                            bool report,
-                            ViolationReport& net_report);
-  void writeReport(std::ofstream& report_file, bool verbose);
+  LayerCheck checkRatioViolations(odb::dbTechLayer* layer,
+                                  NodeInfo& node_info,
+                                  float ratio_margin);
+  std::string formatReport(bool verbose);
   void printReport(odb::dbNet* db_net);
   int checkGates(odb::dbNet* db_net,
-                 bool verbose,
                  bool save_report,
                  odb::dbMTerm* diode_mterm,
                  float ratio_margin,
                  GateToLayerToNodeInfo& gate_info,
-                 Violations& antenna_violations);
+                 Violations& antenna_violations,
+                 NetCheck& net_check);
   void calculateViaPar(odb::dbTechLayer* tech_layer, NodeInfo& info);
   void calculateWirePar(odb::dbTechLayer* tech_layer, NodeInfo& info);
-  bool checkPAR(odb::dbNet* db_net,
-                odb::dbTechLayer* tech_layer,
-                NodeInfo& info,
-                float ratio_margin,
-                bool verbose,
-                bool report,
-                ViolationReport& net_report);
-  bool checkPSR(odb::dbNet* db_net,
-                odb::dbTechLayer* tech_layer,
-                NodeInfo& info,
-                float ratio_margin,
-                bool verbose,
-                bool report,
-                ViolationReport& net_report);
-  bool checkCAR(odb::dbNet* db_net,
-                odb::dbTechLayer* tech_layer,
-                const NodeInfo& info,
-                bool verbose,
-                bool report,
-                ViolationReport& net_report);
-  bool checkCSR(odb::dbNet* db_net,
-                odb::dbTechLayer* tech_layer,
-                const NodeInfo& info,
-                bool verbose,
-                bool report,
-                ViolationReport& net_report);
+  // Each check compares a node's ratio with the layer rule.  checkPAR and
+  // checkPSR also record the excess ratio in info.
+  RatioCheck checkPAR(odb::dbTechLayer* tech_layer,
+                      NodeInfo& info,
+                      float ratio_margin);
+  RatioCheck checkPSR(odb::dbTechLayer* tech_layer,
+                      NodeInfo& info,
+                      float ratio_margin);
+  RatioCheck checkCAR(odb::dbTechLayer* tech_layer, const NodeInfo& info);
+  RatioCheck checkCSR(odb::dbTechLayer* tech_layer, const NodeInfo& info);
 
   odb::dbDatabase* db_{nullptr};
   odb::dbBlock* block_{nullptr};
   utl::Logger* logger_{nullptr};
   odb::PtrMap<odb::dbTechLayer, AntennaModel> layer_info_;
   int net_violation_count_{0};
+  int pin_violation_count_{0};
   std::string report_file_name_;
   std::vector<odb::dbNet*> nets_;
   odb::PtrMap<odb::dbNet, ViolationReport> net_to_report_;

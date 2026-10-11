@@ -11,3 +11,12 @@ or_integration_tests(
     repair_antennas_no_guides
 )
 
+add_executable(TestAntennaMerge cpp/TestAntennaMerge.cpp)
+target_link_libraries(TestAntennaMerge
+  ant_lib
+  tst_base
+  tst_physical
+  GTest::gtest_main
+)
+gtest_discover_tests(TestAntennaMerge)
+add_dependencies(build_and_test TestAntennaMerge)

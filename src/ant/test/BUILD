@@ -1,7 +1,22 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//test:regression.bzl", "doc_check_test", "regression_test")
 
 package(features = ["layering_check"])
+
+cc_test(
+    name = "TestAntennaMerge",
+    srcs = ["cpp/TestAntennaMerge.cpp"],
+    deps = [
+        "//src/ant",
+        "//src/odb/src/db",
+        "//src/tst:db_fixture",
+        "//src/tst:physical_builder",
+        "//src/utl",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
 
 # From CMakeLists.txt or_integration_tests(TESTS
 COMPULSORY_TESTS = [
