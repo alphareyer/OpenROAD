@@ -75,25 +75,25 @@ TEST_F(TestGCellTileSize, ErrorsRatherThanCrashesWithTooFewFrontsideLayers)
   ASSERT_EQ(m1->getRoutingLevel(), 5);  // 4 backside + M1
   block()->setMaxRoutingLayer(5);
 
-  // Confirm the specific new error fires (ODB-1219, "no such frontside
+  // Confirm the specific new error fires (ODB-1221, "no such frontside
   // layer"), not just that some runtime_error is thrown -- a bug in the
   // split could silently fall through to the pre-existing ODB-0358
   // ("track grid not found") instead and this would still vacuously
   // pass without checking the message.
   try {
     block()->getGCellTileSize();
-    FAIL() << "Expected ODB-1219";
+    FAIL() << "Expected ODB-1221";
   } catch (const std::exception& e) {
-    EXPECT_STREQ(e.what(), "ODB-1219");
+    EXPECT_STREQ(e.what(), "ODB-1221");
   } catch (...) {
-    FAIL() << "Unexpected exception (other than ODB-1219)";
+    FAIL() << "Unexpected exception (other than ODB-1221)";
   }
 }
 
 // The split's other error path: tech_layer is found (so it's guaranteed
 // non-null when findTrackGrid()/getName() are called), but that layer
 // has no track grid built yet. Must raise the pre-existing ODB-0358,
-// distinct from ODB-1219 above.
+// distinct from ODB-1221 above.
 TEST_F(TestGCellTileSize, ErrorsOnFoundLayerWithNoTrackGrid)
 {
   makeUntrackedRoutingLayer("M1");
