@@ -2539,7 +2539,7 @@ int dbBlock::getGCellTileSize()
     if (tech_layer == nullptr) {
       getImpl()->getLogger()->error(
           utl::ODB,
-          1220,
+          1221,
           "No frontside routing layer #{} found -- only {} exist in the "
           "technology.",
           layer_idx,
