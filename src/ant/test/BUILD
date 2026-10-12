@@ -117,3 +117,11 @@ doc_check_test(
     ],
     visibility = ["//visibility:public"],
 )
+
+exports_files(
+    [
+        "ant_check.def",
+        "ant_check.lef",
+    ],
+    visibility = ["//python/openroad:__pkg__"],
+)
