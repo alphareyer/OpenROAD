@@ -118,6 +118,8 @@ class TestResizerMt : public tst::IntegratedFixture
       return {};
     }
 
+    // Required times are lazy; worst-slack selection needs computed values.
+    sta_->findRequireds();
     sta::Path* path = sta_->vertexWorstSlackPath(endpoint, sta::MinMax::max());
     if (path == nullptr) {
       ADD_FAILURE() << "missing worst slack path for " << endpoint_name;
