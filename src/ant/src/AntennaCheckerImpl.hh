@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <fstream>
 #include <map>
 #include <memory>
 #include <set>
@@ -11,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/synchronization/mutex.h"
 #include "ant/AntennaChecker.hh"
 #include "odb/PtrSetMap.h"
 #include "odb/db.h"
@@ -68,17 +66,6 @@ struct NodeInfo
   }
 };
 
-struct ViolationReport
-{
-  bool violated;
-  // Set when the net violates on a node whose iterm_diff_area is zero --
-  // i.e. no diffusion area at all reaches the conductor that violates.
-  // Diodes already on the net are then inert for THIS violation.
-  bool violated_with_no_diff_area{false};
-  std::string report;
-  ViolationReport() { violated = false; }
-};
-
 using LayerToNodeInfo = odb::PtrMap<odb::dbTechLayer, NodeInfo>;
 using GraphNodes = std::vector<std::unique_ptr<GraphNode>>;
 using LayerToGraphNodes = odb::PtrMap<odb::dbTechLayer, GraphNodes>;
@@ -91,7 +78,7 @@ class AntennaChecker::Impl
  public:
   Impl(odb::dbDatabase* db, utl::Logger* logger);
 
-  // net nullptr -> check all nets
+  DesignCheck check(odb::dbNet* net, int num_threads);
   int checkAntennas(odb::dbNet* net, int num_threads, bool verbose);
   int antennaViolationCount() const;
   std::vector<odb::dbNet*> violatingNets();
@@ -121,10 +108,9 @@ class AntennaChecker::Impl
   void reportUncheckableNets(odb::dbNet* checked_net, bool use_grt_routes);
   // Names nets carrying antenna diodes that reach no violating conductor,
   // so a repair pass adding another one cannot help.
-  void reportInertDiodes();
+  void reportInertDiodes(const DesignCheck& design);
   void buildLayerMaps(odb::dbNet* net, LayerToGraphNodes& node_by_layer_map);
   int analyzeNet(odb::dbNet* net,
-                 bool save_report,
                  odb::dbMTerm* diode_mterm,
                  float ratio_margin,
                  Violations& antenna_violations,
@@ -139,10 +125,7 @@ class AntennaChecker::Impl
   LayerCheck checkRatioViolations(odb::dbTechLayer* layer,
                                   NodeInfo& node_info,
                                   float ratio_margin);
-  std::string formatReport(bool verbose);
-  void printReport(odb::dbNet* db_net);
   int checkGates(odb::dbNet* db_net,
-                 bool save_report,
                  odb::dbMTerm* diode_mterm,
                  float ratio_margin,
                  GateToLayerToNodeInfo& gate_info,
@@ -165,12 +148,11 @@ class AntennaChecker::Impl
   odb::dbBlock* block_{nullptr};
   utl::Logger* logger_{nullptr};
   odb::PtrMap<odb::dbTechLayer, AntennaModel> layer_info_;
+  // The counts and identities of the last checkAntennas.
+  std::vector<odb::dbNet*> violating_nets_;
   int net_violation_count_{0};
   int pin_violation_count_{0};
   std::string report_file_name_;
-  std::vector<odb::dbNet*> nets_;
-  odb::PtrMap<odb::dbNet, ViolationReport> net_to_report_;
-  absl::Mutex map_mutex_;
   // consts
   static constexpr int kMaxDiodeCountPerGate = 10;
 };

@@ -61,6 +61,18 @@ struct NetCheck
   odb::dbNet* net{nullptr};
   std::vector<PinCheck> pins;
   bool violated{false};
+  // A violating conductor has no diffusion area, so diodes elsewhere on
+  // this net cannot help that violation.
+  bool violated_with_no_diff_area{false};
+};
+
+// The checks for the routed nets of a design, in net id order.
+struct DesignCheck
+{
+  std::vector<NetCheck> nets;
+
+  int violatingNets() const;
+  int violatingPins() const;
 };
 
 class AntennaChecker
@@ -69,7 +81,14 @@ class AntennaChecker
   AntennaChecker(odb::dbDatabase* db, utl::Logger* logger);
   ~AntennaChecker();
 
-  // net nullptr -> check all nets
+  // Checks the routing of net, or of every signal net when net is nullptr,
+  // and returns the result without printing anything.  Uses the detailed
+  // routes, or temporary wires built from the global route guides when
+  // there are none.
+  DesignCheck check(odb::dbNet* net = nullptr, int num_threads = 1);
+  // check_antennas: runs check() and reports the result -- the counts and
+  // metrics, the violating nets (or the one net) when verbose, and the
+  // report file if one is set.  Returns the number of violating nets.
   int checkAntennas(odb::dbNet* net = nullptr,
                     int num_threads = 1,
                     bool verbose = false);

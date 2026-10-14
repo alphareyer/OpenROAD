@@ -86,6 +86,14 @@ TEST_F(AntennaMergeTest, StructuredResultsAndStableViolationSet)
   EXPECT_EQ(checker.violatingNets(), (std::vector<odb::dbNet*>{first, second}));
   EXPECT_EQ(checker.pinViolationCount(), 2);
 
+  getLogger()->redirectStringBegin();
+  const DesignCheck design = checker.check(second, 2);
+  const std::string silent = getLogger()->redirectStringEnd();
+  EXPECT_TRUE(silent.empty());
+  EXPECT_EQ(design.violatingNets(), 1);
+  EXPECT_EQ(checker.violatingNets(), (std::vector<odb::dbNet*>{first, second}));
+  EXPECT_EQ(checker.antennaViolationCount(), 2);
+
   EXPECT_EQ(checker.checkAntennas(second), 1);
   EXPECT_EQ(checker.violatingNets(), (std::vector<odb::dbNet*>{second}));
   EXPECT_EQ(checker.pinViolationCount(), 1);

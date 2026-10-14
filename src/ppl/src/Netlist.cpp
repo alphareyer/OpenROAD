@@ -104,6 +104,12 @@ odb::Rect Netlist::getBB(int idx, const odb::Point& slot_pos)
 
 int Netlist::computeIONetHPWL(int idx, const odb::Point& slot_pos)
 {
+  // Minimizing displacement ranks slots by distance instead of wirelength.
+  if (minimize_displacement_) {
+    const odb::Point& from = io_pins_[idx].getInitialPosition();
+    return std::abs(slot_pos.x() - from.x())
+           + std::abs(slot_pos.y() - from.y());
+  }
   int net_start = net_pointer_[idx];
   int net_end = net_pointer_[idx + 1];
 
@@ -137,7 +143,10 @@ int Netlist::computeIONetCost(int idx, const odb::Point& slot_pos)
 {
   const int hpwl = computeIONetHPWL(idx, slot_pos);
   const int weight = net_weights_[idx];
-  if (weight <= 1 || hpwl == std::numeric_limits<int>::max()) {
+  // Legalization minimizes movement of an already optimized placement,
+  // independent of the weights used by the wirelength objective.
+  if (minimize_displacement_ || weight <= 1
+      || hpwl == std::numeric_limits<int>::max()) {
     return hpwl;
   }
   const int64_t cost = static_cast<int64_t>(hpwl) * weight;
