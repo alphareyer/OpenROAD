@@ -81,7 +81,10 @@ TEST_F(AntennaMergeTest, StructuredResultsAndStableViolationSet)
   EXPECT_TRUE(layer.par.violated);
   EXPECT_GT(layer.par.actual, layer.par.required);
   EXPECT_DOUBLE_EQ(layer.par.required, 100.0);
-  EXPECT_FALSE(layer.car.has_value());
+  // CAR is evaluated even when PAR fails; this fixture has no CAR limit.
+  EXPECT_GT(layer.car.actual, 0.0);
+  EXPECT_DOUBLE_EQ(layer.car.required, 0.0);
+  EXPECT_FALSE(layer.car.violated);
   // A one-net query must not overwrite the last whole-design census.
   EXPECT_EQ(checker.violatingNets(), (std::vector<odb::dbNet*>{first, second}));
   EXPECT_EQ(checker.pinViolationCount(), 2);

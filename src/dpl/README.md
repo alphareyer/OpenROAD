@@ -139,15 +139,28 @@ remove_fillers
 ### Check Placement
 
 The `check_placement` command checks the placement legality. It returns
-`0` if the placement is legal. If any violation is found it raises `DPL-33`,
+`0` if the placement is legal. If any violation is found it raises `DPL-33`
+(`DPL-41` for a fixed-only check),
 unless `-no_abort` is given, in which case it returns the violation count and
 the caller is responsible for acting on a non-zero result.
+
+With `-fixed`, only fixed instances (e.g., tapcells and endcaps) and macros
+are checked, which validates the floorplan before the standard cells are
+placed. With `-placeable`, only the movable cells are checked. Without either
+option, both are checked.
+
+C++ callers select cell types with
+`checkPlacement(verbose, report_file_name, check_fixed, check_placeable, no_abort)`,
+where `no_abort` defaults to false. The existing three-argument fork overload
+continues to interpret its last argument as `no_abort`.
 
 ```tcl
 check_placement
     [-verbose]
     [-disallow_one_site_gaps]
     [-no_abort]
+    [-fixed]
+    [-placeable]
     [-report_file_name filename]
 ```
 
@@ -157,7 +170,9 @@ check_placement
 | ----- | ----- |
 | `-verbose` | Enable verbose logging. |
 | `-disallow_one_site_gaps` | Option is deprecated. |
-| `-no_abort` | Report violations as a warning and return the violation count instead of raising `DPL-33`. Intended for repair flows that need to inspect and fix the placement; the returned count must be consulted, since the command no longer fails on its own. |
+| `-no_abort` | Report violations as `DPL-1041` warnings and return the violation count instead of raising an error. Applies to the selected cell types. Intended for repair flows that need to inspect and fix the placement; the returned count must be consulted, since the command no longer fails on its own. |
+| `-fixed` | Check fixed instances and macros. |
+| `-placeable` | Check movable cells. |
 | `-report_file_name` | File name for saving the report to (e.g. `report.json`.) |
 
 ### Optimize Mirroring
@@ -205,10 +220,10 @@ Examples scripts demonstrating how to run `dpl` on a sample design of `aes` as f
 
 There are a set of regression tests in `./test`. Refer to this [section](../../README.md#regression-tests) for more information.
 
-Simply run the following script:
+Simply run the following command:
 
 ```shell
-./test/regression
+bazelisk test //src/dpl/...
 ```
 
 ## Limitations

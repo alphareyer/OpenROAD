@@ -154,6 +154,12 @@ or_integration_tests(
     repair_setup_phases_order
     repair_setup_undo1
     repair_setup_undo2
+    repair_timing_path_group1
+    repair_timing_path_group2
+    repair_timing_path_group3
+    repair_timing_path_group4
+    repair_timing_path_group5
+    repair_timing_path_group6
     repair_slew1
     repair_slew2
     repair_slew3
@@ -261,6 +267,7 @@ or_integration_tests(
     inferred_clock_gator_time_borrow_tns
     latch_borrow_chain
   PASSFAIL_TESTS
+    repair_hold_path_group_count
     repair_hold_absolute_count
     repair_timing_fixed
     repair_setup_legacy_mt

@@ -98,6 +98,7 @@ test_suite(
         ":TestAlgorithms",
         ":TestCFileUtils",
         ":TestCpuTopology",
+        ":TestCsvParser",
         ":TestMetrics",
         ":TestSuppressStdout",
     ],
@@ -132,6 +133,16 @@ cc_test(
     srcs = [
         "cpp/TestMetrics.cpp",
     ],
+    deps = [
+        "//src/utl",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "TestCsvParser",
+    srcs = ["cpp/TestCsvParser.cpp"],
     deps = [
         "//src/utl",
         "@googletest//:gtest",

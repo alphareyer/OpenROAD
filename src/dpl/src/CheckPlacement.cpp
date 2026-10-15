@@ -28,7 +28,17 @@ int Opendp::checkPlacement(const bool verbose,
                            const std::string& report_file_name,
                            const bool no_abort)
 {
-  importDb();
+  return checkPlacement(verbose, report_file_name, true, true, no_abort);
+}
+
+int Opendp::checkPlacement(const bool verbose,
+                           const std::string& report_file_name,
+                           const bool check_fixed,
+                           const bool check_placeable,
+                           const bool no_abort)
+{
+  const bool fixed_only = check_fixed && !check_placeable;
+  importDb(fixed_only);
   adjustNodesOrient();
 
   std::vector<Node*> placed_failures;
@@ -43,9 +53,17 @@ int Opendp::checkPlacement(const bool verbose,
 
   initGrid();
   groupAssignCellRegions();
+  auto is_checked = [&](const Node* cell) {
+    return cell->getType() == Node::CELL
+           && (cell->isFixed() ? check_fixed : check_placeable);
+  };
+  // Paint unchecked fixed cells so placeable cells are checked against them.
+  if (!check_fixed) {
+    setFixedGridCells();
+  }
   const auto& row_coords = grid_->getRowCoordinates();
   for (auto& cell : network_->getNodes()) {
-    if (cell->getType() != Node::CELL) {
+    if (!is_checked(cell.get())) {
       continue;
     }
     if (cell->isStdCell()) {
@@ -92,7 +110,7 @@ int Opendp::checkPlacement(const bool verbose,
   if (disallow_one_site_gaps_) {
     for (auto& cell : network_->getNodes()) {
       // One site gap check
-      if (cell->getType() == Node::CELL && checkOneSiteGaps(*cell)) {
+      if (is_checked(cell.get()) && checkOneSiteGaps(*cell)) {
         one_site_gap_failures.push_back(cell.get());
       }
     }
@@ -123,21 +141,24 @@ int Opendp::checkPlacement(const bool verbose,
   reportFailures(
       edge_spacing_failures, 9, "LEF58_CELLEDGESPACINGTABLE", verbose);
   reportFailures(blocked_layers_failures, 10, "Blocked layers", verbose);
-  logger_->metric("design__violations",
+  // A fixed-only run validates the floorplan, so it reports under its own
+  // metric instead of overwriting the detailed placement one.
+  logger_->metric(fixed_only ? "floorplan__violations" : "design__violations",
                   placed_failures.size() + in_rows_failures.size()
                       + overlap_failures.size() + padding_failures.size()
                       + site_align_failures.size());
+  if (fixed_only) {
+    // Filler and decap placement reuse a populated network without
+    // re-importing, so do not leave one without the movable cells behind.
+    importClear();
+  }
 
-  const int violations
-      = static_cast<int>(placed_failures.size() + in_rows_failures.size()
-                         + overlap_failures.size() + padding_failures.size()
-                         + site_align_failures.size()
-                         + (disallow_one_site_gaps_
-                                ? one_site_gap_failures.size()
-                                : 0)
-                         + region_placement_failures.size()
-                         + edge_spacing_failures.size()
-                         + blocked_layers_failures.size());
+  const int violations = static_cast<int>(
+      placed_failures.size() + in_rows_failures.size() + overlap_failures.size()
+      + padding_failures.size() + site_align_failures.size()
+      + (disallow_one_site_gaps_ ? one_site_gap_failures.size() : 0)
+      + region_placement_failures.size() + edge_spacing_failures.size()
+      + blocked_layers_failures.size());
 
   if (violations > 0) {
     // A remaining violation is a real physical defect (overlap, off-site,
@@ -152,19 +173,24 @@ int Opendp::checkPlacement(const bool verbose,
     //     unwrapped flow correctly aborts with a non-zero exit status.
     //
     //   no_abort=true -- the caller has stated it will handle the result, so
-    //     we warn under a DISTINCT id (DPL-41) and return the violation count.
-    //     The caller is then obliged to consult that count. Returning a number
-    //     is what makes the outcome machine-visible: a warning nobody can
-    //     consult is indistinguishable from a silent pass. The id differs from
-    //     DPL-33 on purpose -- "failed, and I aborted" and "failed, and I
+    //     we warn under a DISTINCT id (DPL-1041) and return the violation
+    //     count. The caller is then obliged to consult that count. Returning a
+    //     number is what makes the outcome machine-visible: a warning nobody
+    //     can consult is indistinguishable from a silent pass. The id differs
+    //     from DPL-33 on purpose -- "failed, and I aborted" and "failed, and I
     //     handed the count back" are different events, and a log grep must be
     //     able to tell them apart.
     if (no_abort) {
       logger_->warn(DPL,
-                    41,
+                    1041,
                     "detailed placement checks failed during check placement: "
                     "{} violation(s) returned to caller.",
                     violations);
+    } else if (fixed_only) {
+      logger_->error(DPL,
+                     41,
+                     "placement checks failed for fixed instances during check "
+                     "placement.");
     } else {
       logger_->error(
           DPL, 33, "detailed placement checks failed during check placement.");

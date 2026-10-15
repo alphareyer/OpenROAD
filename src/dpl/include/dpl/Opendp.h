@@ -140,12 +140,15 @@ class Opendp
   int padLeft(odb::dbInst* inst) const;
   int padRight(odb::dbInst* inst) const;
 
-  // Returns the number of placement violations found. With no_abort=false
-  // (the default) a non-zero count raises DPL-33, so a violation can never be
-  // reported as success; with no_abort=true the caller takes responsibility
-  // and MUST consult the returned count.
+  // Legacy API: the third argument controls recovery, not cell selection.
+  // A nonzero count throws unless no_abort is explicitly enabled.
   int checkPlacement(bool verbose,
                      const std::string& report_file_name = "",
+                     bool no_abort = false);
+  int checkPlacement(bool verbose,
+                     const std::string& report_file_name,
+                     bool check_fixed,
+                     bool check_placeable,
                      bool no_abort = false);
   void fillerPlacement(const dbMasterSeq& filler_masters,
                        const char* prefix,
@@ -223,10 +226,10 @@ class Opendp
   void saveViolations(const std::vector<Node*>& failures,
                       odb::dbMarkerCategory* category,
                       const std::string& violation_type = "") const;
-  void importDb();
+  void importDb(bool fixed_only = false);
   void importClear();
   odb::Rect getBbox(odb::dbInst* inst);
-  void createNetwork();
+  void createNetwork(bool fixed_only);
   void createArchitecture();
   void setUpPlacementGroups();
   void adjustNodesOrient();

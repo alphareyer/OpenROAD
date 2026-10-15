@@ -27,6 +27,9 @@ COMPULSORY_TESTS = [
     "check9",
     "check_no_abort",
     "check_no_abort_clean",
+    "check_filtered_no_abort",
+    "check_fixed_only",
+    "check_placeable_only",
     "diamond01",
     "diamond_multi_height",
     "diamond_one_site_gap",
@@ -171,6 +174,17 @@ filegroup(
             ],
             "check_no_abort_clean": [
                 "check9.def",
+                "extra.lef",
+            ],
+            "check_filtered_no_abort": [
+                "check_fixed_only.def",
+                "extra.lef",
+            ],
+            "check_fixed_only": [
+                "extra.lef",
+            ],
+            "check_placeable_only": [
+                "check_fixed_only.def",
                 "extra.lef",
             ],
             "diamond01": [
@@ -343,11 +357,13 @@ filegroup(
 cc_test(
     name = "dpl_unittest",
     srcs = ["dpl_test.cc"],
+    data = ["extra.lef"],
     deps = [
         "//src/dpl",
         "//src/odb/src/db",
         "//src/odb/src/lefin",
         "//src/tst",
+        "//src/tst:nangate45_fixture",
         "//src/utl",
         "@googletest//:gtest",
         "@googletest//:gtest_main",

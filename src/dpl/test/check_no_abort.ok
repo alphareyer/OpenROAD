@@ -5,7 +5,7 @@
  _285_ (NOR2_X1) overlaps _284_ (NOR2_X1)
 [WARNING DPL-0011] Padding check failed (1).
  _285_
-[WARNING DPL-0041] detailed placement checks failed during check placement: 2 violation(s) returned to caller.
+[WARNING DPL-1041] detailed placement checks failed during check placement: 2 violation(s) returned to caller.
 RETURNED_VIOLATIONS: 2
 CALLER_SAW_NON_PASS
 FLOW_CONTINUED

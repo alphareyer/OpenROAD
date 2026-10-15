@@ -176,6 +176,12 @@ TESTS = [
     "repair_setup_unbuffer_legacy_bufx8",
     "repair_setup_undo1",
     "repair_setup_undo2",
+    "repair_timing_path_group1",
+    "repair_timing_path_group2",
+    "repair_timing_path_group3",
+    "repair_timing_path_group4",
+    "repair_timing_path_group5",
+    "repair_timing_path_group6",
     "repair_slew1",
     "repair_slew10",
     "repair_slew11",
@@ -276,6 +282,7 @@ TESTS = [
 
 # From CMakeLists.txt or_integration_tests(PASSFAIL_TESTS
 PASSFAIL_TESTS = [
+    "repair_hold_path_group_count",
     "repair_hold_absolute_count",
     # NOTE: cpp_tests excluded - it's a CMake-specific wrapper script that expects
     # build directory structure not compatible with Bazel
@@ -292,6 +299,7 @@ ALL_TESTS = TESTS + PASSFAIL_TESTS
 # PASSFAIL tests that assert their own results and have no .ok to diff,
 # as CMake runs every PASSFAIL test.
 SELF_CHECKING_TESTS = [
+    "repair_hold_path_group_count",
     "repair_design_fixed_driver",
     "gain_buffering_top_port_hier",
 ]

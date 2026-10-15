@@ -162,6 +162,8 @@ proc remove_fillers { args } {
 sta::define_cmd_args "check_placement" {[-verbose] \
                                         [-disallow_one_site_gaps] \
                                         [-no_abort] \
+                                        [-fixed] \
+                                        [-placeable] \
                                         [-report_file_name file_name]}
 
 proc check_placement { args } {
@@ -170,9 +172,16 @@ proc check_placement { args } {
   }
 
   sta::parse_key_args "check_placement" args \
-    keys {-report_file_name} flags {-verbose -disallow_one_site_gaps -no_abort}
+    keys {-report_file_name} flags {-verbose -disallow_one_site_gaps -no_abort -fixed -placeable}
   set verbose [info exists flags(-verbose)]
   set no_abort [info exists flags(-no_abort)]
+  set check_fixed [info exists flags(-fixed)]
+  set check_placeable [info exists flags(-placeable)]
+  # Without either flag, check both.
+  if { !$check_fixed && !$check_placeable } {
+    set check_fixed 1
+    set check_placeable 1
+  }
   sta::check_argc_eq0 "check_placement" $args
   set file_name ""
   if { [info exists keys(-report_file_name)] } {
@@ -181,10 +190,8 @@ proc check_placement { args } {
   if { [info exists flags(-disallow_one_site_gaps)] } {
     utl::warn DPL 4 "-disallow_one_site_gaps is deprecated"
   }
-  # Returns the violation count. Without -no_abort a non-zero count raises
-  # DPL-33 instead of returning, so an illegal placement can never be mistaken
-  # for a legal one by a caller that ignores the result.
-  return [dpl::check_placement_cmd $verbose $file_name $no_abort]
+  # Return the violation count only when the caller explicitly requests recovery.
+  return [dpl::check_placement_cmd $verbose $file_name $check_fixed $check_placeable $no_abort]
 }
 
 sta::define_cmd_args "optimize_mirroring" {}

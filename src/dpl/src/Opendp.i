@@ -54,8 +54,19 @@ int
 check_placement_cmd(bool verbose, const char* report_file_name, bool no_abort)
 {
   dpl::Opendp *opendp = ord::OpenRoad::openRoad()->getOpendp();
-  return opendp->checkPlacement(verbose, std::string(report_file_name),
-                                no_abort);
+  return opendp->checkPlacement(verbose, std::string(report_file_name), no_abort);
+}
+
+int
+check_placement_cmd(bool verbose,
+                    const char* report_file_name,
+                    bool check_fixed,
+                    bool check_placeable,
+                    bool no_abort = false)
+{
+  dpl::Opendp *opendp = ord::OpenRoad::openRoad()->getOpendp();
+  return opendp->checkPlacement(
+      verbose, std::string(report_file_name), check_fixed, check_placeable, no_abort);
 }
 
 

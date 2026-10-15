@@ -22,6 +22,9 @@ or_integration_tests(
     check9
     check_no_abort
     check_no_abort_clean
+    check_filtered_no_abort
+    check_fixed_only
+    check_placeable_only
     diamond01
     diamond_multi_height
     diamond_one_site_gap
