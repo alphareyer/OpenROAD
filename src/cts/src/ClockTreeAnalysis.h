@@ -47,7 +47,6 @@ class ClockTreeAnalysis
 {
  public:
   ClockTreeAnalysis(utl::Logger* logger,
-                    odb::dbDatabase* db,
                     sta::dbNetwork* network,
                     sta::dbSta* sta);
 
@@ -106,7 +105,6 @@ class ClockTreeAnalysis
   std::vector<odb::dbNet*> clockRootNets() const;
 
   utl::Logger* logger_ = nullptr;
-  odb::dbDatabase* db_ = nullptr;
   sta::dbNetwork* network_ = nullptr;
   sta::dbSta* openSta_ = nullptr;
 

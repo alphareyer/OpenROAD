@@ -22,10 +22,9 @@ namespace cts {
 using utl::CTS;
 
 ClockTreeAnalysis::ClockTreeAnalysis(utl::Logger* logger,
-                                     odb::dbDatabase* db,
                                      sta::dbNetwork* network,
                                      sta::dbSta* sta)
-    : logger_(logger), db_(db), network_(network), openSta_(sta)
+    : logger_(logger), network_(network), openSta_(sta)
 {
   scenes_ = openSta_->scenes();
 }
