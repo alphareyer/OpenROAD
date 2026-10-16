@@ -47,7 +47,7 @@ namespace rcx {
 // afterwards through dbWire::addOneSeg -- odb's own documented way to "save and
 // restore routing without re-encoding it". The parasitics are untouched:
 // write_spef produces a byte-identical SPEF either side of the restore (only
-// its *DATE line differs). The isWireOrdered flag is restored too, so a later
+// its *DATE line differs). The wire's ordered flag is restored too, so a later
 // consumer that needs ordered wires still orders them for itself.
 //
 // This does NOT fix tmg_conn's re-encode, which is the underlying defect and is

@@ -54,7 +54,7 @@ void RoutingPreserver::snapshot(odb::dbBlock* block)
     }
     Saved saved;
     saved.net = net;
-    saved.ordered = net->isWireOrdered();
+    saved.ordered = wire->isOrdered();
     saved.stream = readStream(wire);
     saved_.push_back(std::move(saved));
   }
@@ -108,7 +108,7 @@ RoutingPreserver::~RoutingPreserver()
     for (const auto& [op, value] : saved.stream) {
       wire->addOneSeg(op, value);
     }
-    saved.net->setWireOrdered(saved.ordered);
+    wire->setOrdered(saved.ordered);
     restored++;
   }
   if (restored > 0 && logger_ != nullptr) {

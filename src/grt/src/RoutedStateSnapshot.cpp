@@ -25,11 +25,11 @@ RoutedStateSnapshot::RoutedStateSnapshot(odb::dbBlock* block,
       continue;
     }
     NetState state;
-    state.wire_ordered = net->isWireOrdered();
     state.has_jumpers = net->hasJumpers();
     odb::dbWire* wire = net->getWire();
     if (wire != nullptr) {
       state.has_wire = true;
+      state.wire_ordered = wire->isOrdered();
       const int length = static_cast<int>(wire->length());
       state.opcodes.reserve(length);
       state.data.reserve(length);
@@ -127,7 +127,7 @@ bool RoutedStateSnapshot::restore()
       for (int i = 0; i < length; i++) {
         new_wire->addOneSeg(state.opcodes[i], state.data[i]);
       }
-      net->setWireOrdered(state.wire_ordered);
+      new_wire->setOrdered(state.wire_ordered);
     }
     net->setJumpers(state.has_jumpers);
     for (const GuideState& guide : state.guides) {

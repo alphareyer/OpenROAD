@@ -41,7 +41,8 @@ struct Fixture
     db = odb::dbDatabase::create();
     db->setLogger(&logger);
     odb::dbTech* tech = odb::dbTech::create(db, "tech");
-    met1 = odb::dbTechLayer::create(tech, "met1", odb::dbTechLayerType::ROUTING);
+    met1
+        = odb::dbTechLayer::create(tech, "met1", odb::dbTechLayerType::ROUTING);
     met1->setWidth(100);
     met1->setPitch(200);
   }
@@ -103,7 +104,7 @@ void reencode(odb::dbNet* net, odb::dbTechLayer* layer)
   encoder.addPoint(9000, 1000);
   encoder.addPoint(9000, 7000);
   encoder.end();
-  net->setWireOrdered(true);
+  wire->setOrdered(true);
 }
 
 }  // namespace
@@ -121,29 +122,33 @@ TEST(TestRoutingPreserver, MutationStandsWithoutAPreserver)
   // THE CONTROL. Without a preserver the rewrite survives -- which is what the
   // shipped tool did, and why the next test is worth anything.
   EXPECT_NE(stream(net), before);
-  EXPECT_TRUE(net->isWireOrdered());
+  EXPECT_TRUE(net->getWire()->isOrdered());
 }
 
 TEST(TestRoutingPreserver, PreserverRestoresTheWire)
 {
-  Fixture f;
-  odb::dbBlock* block = f.makeBlock("chip", "block");
-  odb::dbNet* net = f.makeRoutedNet(block, "n1");
-  const auto before = stream(net);
-  ASSERT_FALSE(before.empty());
-  EXPECT_FALSE(net->isWireOrdered());
+  for (const bool ordered : {false, true}) {
+    SCOPED_TRACE(ordered);
+    Fixture f;
+    odb::dbBlock* block = f.makeBlock("chip", "block");
+    odb::dbNet* net = f.makeRoutedNet(block, "n1");
+    net->getWire()->setOrdered(ordered);
+    const auto before = stream(net);
+    ASSERT_FALSE(before.empty());
 
-  {
-    RoutingPreserver preserver(&f.logger);
-    preserver.snapshot(block);
-    reencode(net, f.met1);
-    // It really did move while the preserver was alive -- otherwise the
-    // restore below would be proving nothing.
-    EXPECT_EQ(preserver.changedCount(), 1);
+    {
+      RoutingPreserver preserver(&f.logger);
+      preserver.snapshot(block);
+      reencode(net, f.met1);
+      net->getWire()->setOrdered(!ordered);
+      // It really did move while the preserver was alive -- otherwise the
+      // restore below would be proving nothing.
+      EXPECT_EQ(preserver.changedCount(), 1);
+    }
+
+    EXPECT_EQ(stream(net), before);
+    EXPECT_EQ(net->getWire()->isOrdered(), ordered);
   }
-
-  EXPECT_EQ(stream(net), before);
-  EXPECT_FALSE(net->isWireOrdered());
 }
 
 // The multi-chip shape: ONE preserver, SEVERAL blocks, every block restored.
