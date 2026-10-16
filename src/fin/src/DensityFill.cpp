@@ -347,21 +347,6 @@ static Polygon90Set orNets(dbBlock* block,
   return result;
 }
 
-// Build a polygon set of the fill already present on the given layer.
-static Polygon90Set orFills(dbBlock* block, dbTechLayer* layer)
-{
-  Polygon90Set fills;
-  for (auto fill : block->getFills()) {
-    if (fill->getTechLayer() != layer) {
-      continue;
-    }
-    Rect rect;
-    fill->getRect(rect);
-    fills.insert(makeRect(rect.xMin(), rect.yMin(), rect.xMax(), rect.yMax()));
-  }
-  return fills;
-}
-
 // Charges fill shapes against a per-window metal-area budget so that inserting
 // fill can never push a density window past max_density.  Windows overlap when
 // step < window, so one shape is charged to every window it touches and is
