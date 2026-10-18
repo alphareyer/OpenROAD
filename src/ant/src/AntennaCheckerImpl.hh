@@ -24,6 +24,7 @@ namespace ant {
 struct PARinfo;
 struct ARinfo;
 struct AntennaModel;
+struct PinAntenna;
 class WireBuilder;
 
 ///////////////////////////////////////
@@ -70,6 +71,7 @@ using LayerToNodeInfo = odb::PtrMap<odb::dbTechLayer, NodeInfo>;
 using GraphNodes = std::vector<std::unique_ptr<GraphNode>>;
 using LayerToGraphNodes = odb::PtrMap<odb::dbTechLayer, GraphNodes>;
 using GateToLayerToNodeInfo = odb::PtrMap<odb::dbITerm, LayerToNodeInfo>;
+using PinAntennas = odb::PtrMap<odb::dbMTerm, PinAntenna>;
 using GateToViolationLayers
     = odb::PtrMap<odb::dbITerm, odb::PtrSet<odb::dbTechLayer>>;
 
@@ -95,14 +97,11 @@ class AntennaChecker::Impl
   bool haveRoutedNets();
   bool designIsPlaced();
   bool haveGuides();
-  double diffArea(odb::dbMTerm* mterm);
-  double gateArea(odb::dbMTerm* mterm);
   std::vector<std::pair<double, std::vector<odb::dbITerm*>>> parMaxWireLength(
       odb::dbNet* net,
       int layer);
   std::vector<std::pair<double, std::vector<odb::dbITerm*>>>
   getViolatedWireLength(odb::dbNet* net, int routing_level);
-  bool isValidGate(odb::dbMTerm* mterm);
   // Names the nets checkAntennas() could not measure, so "0 violations"
   // cannot be read as "clean" when the routing simply is not there.
   void reportUncheckableNets(odb::dbNet* checked_net, bool use_grt_routes);
@@ -119,9 +118,10 @@ class AntennaChecker::Impl
                  LayerToGraphNodes& node_by_layer_map,
                  int node_count);
   void calculateAreas(const LayerToGraphNodes& node_by_layer_map,
+                      PinAntennas& pins,
                       GateToLayerToNodeInfo& gate_info);
   void calculatePAR(GateToLayerToNodeInfo& gate_info);
-  void calculateCAR(GateToLayerToNodeInfo& gate_info);
+  void calculateCAR(const PinAntennas& pins, GateToLayerToNodeInfo& gate_info);
   LayerCheck checkRatioViolations(odb::dbTechLayer* layer,
                                   NodeInfo& node_info,
                                   float ratio_margin);
