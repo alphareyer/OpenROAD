@@ -4,8 +4,8 @@
 [submodule "src/abc"]
 	path = third-party/abc
 	url = ../../The-OpenROAD-Project/abc.git
-[submodule "third-party/slang-elab"]
-	path = third-party/slang-elab
-	url = ../../povik/yosys-slang.git
 [submodule "src/sta"]
 	url = https://github.com/vibeic/OpenSTA.git
+[submodule "third-party/sv-elab"]
+	path = third-party/sv-elab
+	url = ../../povik/sv-elab.git
