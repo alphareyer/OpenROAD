@@ -115,7 +115,7 @@ class RepairHold : public sta::dbStaState
   utl::Logger* logger_ = nullptr;
   sta::dbNetwork* db_network_ = nullptr;
   Resizer* resizer_;
-  est::EstimateParasitics* estimate_parasitics_;
+  est::EstimateParasitics* estimate_parasitics_ = nullptr;
 
   bool absolute_count_limit_ = false;
   int absolute_max_buffer_count_ = 0;
