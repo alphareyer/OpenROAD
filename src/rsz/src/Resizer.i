@@ -747,7 +747,7 @@ insert_buffer_after_driver_cmd(Net *net,
 {
   ensureLinked();
   Resizer *resizer = getResizer();
-  resizer->initBlock();
+  resizer->initBlockForDirectInsert();
   est::IncrementalParasiticsGuard guard(resizer->getEstimateParasitics());
 
   Instance* inst = nullptr;
@@ -773,7 +773,7 @@ insert_buffer_before_load_cmd(Pin *load_pin,
 {
   ensureLinked();
   Resizer *resizer = getResizer();
-  resizer->initBlock();
+  resizer->initBlockForDirectInsert();
   est::IncrementalParasiticsGuard guard(resizer->getEstimateParasitics());
 
   Instance* inst = nullptr;
@@ -801,7 +801,7 @@ insert_buffer_before_loads_cmd(Net *net,
 {
   ensureLinked();
   Resizer *resizer = getResizer();
-  resizer->initBlock();
+  resizer->initBlockForDirectInsert();
   est::IncrementalParasiticsGuard guard(resizer->getEstimateParasitics());
   
   Instance* inst = nullptr;

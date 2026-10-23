@@ -597,6 +597,9 @@ class Resizer : public sta::dbStaState, public sta::dbNetworkObserver
 
   ////////////////////////////////////////////////////////////////
   void initBlock();
+  // Direct buffer insertion consults OpenDP for a legal position when routed
+  // parasitics are active. Initialize that placement state once per command.
+  void initBlockForDirectInsert();
   void journalBeginTest();
   void journalRestoreTest();
   void eliminateDeadLogic(bool clean_nets);

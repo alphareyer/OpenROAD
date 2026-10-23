@@ -647,6 +647,17 @@ void Resizer::initBlock()
   }
 }
 
+void Resizer::initBlockForDirectInsert()
+{
+  initBlock();
+  if (estimate_parasitics_->getParasiticsSrc()
+          == est::ParasiticsSrc::kGlobalRouting
+      || estimate_parasitics_->getParasiticsSrc()
+             == est::ParasiticsSrc::kDetailedRouting) {
+    opendp_->initMacrosAndGrid();
+  }
+}
+
 void Resizer::init()
 {
   initDesignArea();
