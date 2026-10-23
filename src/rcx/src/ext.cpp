@@ -257,6 +257,18 @@ void Ext::extract(ExtractOptions options)
   _ext->setBlockFromChip(_db->getChip());
   odb::dbBlock* block = _ext->getBlock();
 
+  const uint32_t fill_count = block->getFills().size();
+  if (fill_count > 0) {
+    logger_->error(
+        RCX,
+        540,
+        "The design contains {} explicit dbFill shape(s), but OpenRCX does "
+        "not model their parasitic effect. Refusing to produce fill-blind "
+        "parasitics; use a qualified fill-aware extractor or remove the fill "
+        "geometry before extraction.",
+        fill_count);
+  }
+
   // vibeic fork: see rcx::RoutingPreserver. Constructed BEFORE orderWires() and
   // destroyed when extract() returns, by any path.
   RoutingPreserver routing_preserver(logger_);

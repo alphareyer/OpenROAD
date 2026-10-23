@@ -15,6 +15,7 @@ COMPULSORY_TESTS = [
     "45_gcd",
     "dup_pattern_names",
     "ext_pattern",
+    "explicit_fill_refused",
     "extract_preserves_routing",
     "gcd",
     "generate_pattern",
@@ -40,6 +41,7 @@ filegroup(
     srcs = [
         "45_patterns.rules",
         "45_via_resistance.tcl",
+        "explicit_fill.json",
         "Nangate45/Nangate45.lef",
         "Nangate45/Nangate45.pdn.tcl",
         "Nangate45/Nangate45.rc",
