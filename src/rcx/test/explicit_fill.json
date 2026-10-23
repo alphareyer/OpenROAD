@@ -1,0 +1,18 @@
+{
+  "layers": {
+    "metal1": {
+      "layer": 1,
+      "name": "metal1",
+      "dir": "H",
+      "datatype": 0,
+      "space_to_outline": 0.5,
+      "non-opc": {
+        "datatype": 0,
+        "width": [0.1],
+        "height": [0.1],
+        "space_to_fill": 0.2,
+        "space_to_non_fill": 0.2
+      }
+    }
+  }
+}
