@@ -439,6 +439,11 @@ bool dbTechNonDefaultRule::destroyBlockRule(dbTechNonDefaultRule* rule_)
   }
 
   _dbBlock* block = rule->getBlock();
+  for (dbNet* net : ((dbBlock*) block)->getNets()) {
+    if (net->getNonDefaultRule() == rule_) {
+      return false;
+    }
+  }
   for (dbId<_dbTechLayerRule> id : rule->layer_rules_) {
     if (id != 0) {
       block->layer_rule_tbl_->destroy(block->layer_rule_tbl_->getPtr(id));
