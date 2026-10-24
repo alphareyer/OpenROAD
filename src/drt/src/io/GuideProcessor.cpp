@@ -1478,7 +1478,7 @@ std::vector<std::pair<frBlockObject*, odb::Point>> GuideProcessor::genGuides(
     // incremental ECO before the genuinely new/ripped-up nets can route.
     // Warn and continue; INCR keeps this net's existing routing untouched.
     logger_->warn(DRT,
-                  628,
+                  638,
                   "Guide connectivity not re-established for already-routed net "
                   "{}; preserved by incremental routing.",
                   net->getName());

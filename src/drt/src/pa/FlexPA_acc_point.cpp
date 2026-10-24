@@ -1529,7 +1529,7 @@ void FlexPA::genInstAccessPoints(frInst* unique_inst,
       // downstream instead of crashing the ECO.
       if (allow_pin_access_failure) {
         logger_->warn(DRT,
-                      627,
+                      637,
                       "No access point for {}/{} ({}); pin left unaccessed "
                       "(incremental ECO reroute).",
                       inst_term->getInst()->getName(),
