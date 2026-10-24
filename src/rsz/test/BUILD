@@ -313,6 +313,13 @@ TESTS = [
 
 # From CMakeLists.txt or_integration_tests(PASSFAIL_TESTS
 PASSFAIL_TESTS = [
+    "insert_buffer_routed_after_driver_detailed",
+    "insert_buffer_routed_after_driver_global",
+    "insert_buffer_routed_before_load_detailed",
+    "insert_buffer_routed_before_load_global",
+    "insert_buffer_routed_before_loads_detailed",
+    "insert_buffer_routed_before_loads_global",
+    "insert_buffer_routed_no_rows",
     "repair_hold_path_group_count",
     "repair_hold_absolute_count",
     # NOTE: cpp_tests excluded - it's a CMake-specific wrapper script that expects
@@ -328,6 +335,13 @@ ALL_TESTS = TESTS + PASSFAIL_TESTS
 # PASSFAIL tests that assert their own results and have no .ok to diff,
 # as CMake runs every PASSFAIL test.
 SELF_CHECKING_TESTS = [
+    "insert_buffer_routed_after_driver_detailed",
+    "insert_buffer_routed_after_driver_global",
+    "insert_buffer_routed_before_load_detailed",
+    "insert_buffer_routed_before_load_global",
+    "insert_buffer_routed_before_loads_detailed",
+    "insert_buffer_routed_before_loads_global",
+    "insert_buffer_routed_no_rows",
     "repair_hold_path_group_count",
     "repair_design_fixed_driver",
     "gain_buffering_top_port_hier",
